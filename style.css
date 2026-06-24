@@ -6,6 +6,13 @@
     font-family: 'Inter', sans-serif;
 }
 
+/* FIX: Stable base font size – prevents mobile text enlargement */
+html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
 body {
     background: linear-gradient(135deg, red, rgb(189, 3, 189), red, rgb(189, 3, 189));
     color: #eef5ff;
@@ -21,6 +28,7 @@ body {
     --gold-light: #ffda88;
     --glass-bg: rgba(15, 35, 55, 0.75);
     --card-border: rgba(226, 177, 59, 0.35);
+    --navbar-height: 80px;
 }
 
 /* ===== NAVBAR ===== */
@@ -37,6 +45,7 @@ body {
     top: 0;
     z-index: 1000;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    min-height: var(--navbar-height);
 }
 
 .logo-area {
@@ -77,11 +86,20 @@ body {
     color: var(--gold-light);
 }
 
+/* ===== NAV LINKS – FIXED MOBILE WRAPPING ===== */
 .nav-links {
     display: flex;
-    gap: 1rem;
+    gap: 0.6rem;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap; /* prevent wrapping */
+    overflow-x: auto; /* allow scroll if too many */
+    padding: 4px 0;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* hide scrollbar */
+}
+.nav-links::-webkit-scrollbar {
+    display: none;
 }
 
 .nav-btn {
@@ -93,6 +111,9 @@ body {
     cursor: pointer;
     font-weight: 600;
     transition: all 0.3s;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .nav-btn:hover {
@@ -126,21 +147,60 @@ body {
     color: var(--gold-light);
 }
 
+/* ===== RESPONSIVE NAV ===== */
 @media (max-width: 768px) {
+    :root {
+        --navbar-height: 70px;
+    }
+
     body.dashboard-mode .navbar-hamburger {
         display: block;
     }
+
     .navbar-quran-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 1.6rem;
+        width: 44px;
+        height: 44px;
+        font-size: 1.4rem;
     }
+
     .logo-text h1 {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
     .logo-text p {
-        font-size: 0.6rem;
+        font-size: 0.55rem;
     }
+
+    .navbar {
+        padding: 0.5rem 1rem;
+    }
+
+    /* Mobile compact nav buttons */
+    .nav-btn {
+        padding: 0.3rem 0.7rem;
+        font-size: 0.7rem;
+        border-radius: 30px;
+    }
+
+    /* Short labels on mobile */
+    .nav-btn[onclick*="'home'"] span { display: none; }
+    .nav-btn[onclick*="'home'"]::before { content: "🏠"; }
+
+    .nav-btn[onclick*="'courses'"] span { display: none; }
+    .nav-btn[onclick*="'courses'"]::before { content: "📚"; }
+
+    .nav-btn[onclick*="'teachers'"] span { display: none; }
+    .nav-btn[onclick*="'teachers'"]::before { content: "👨‍🏫"; }
+
+    /* Dashboard button uses icon */
+    .nav-btn.admin-dashboard-btn span { display: none; }
+    .nav-btn.admin-dashboard-btn::before { content: "📊"; }
+
+    /* Logout button */
+    .nav-btn#logoutBtn span { display: none; }
+    .nav-btn#logoutBtn::before { content: "🚪"; }
+
+    /* Notification bell remains as icon, keep text hidden */
+    #notificationBell span { display: none; }
 }
 
 @media (min-width: 769px) {
@@ -296,13 +356,13 @@ button:active {
     color: var(--gold-light);
 }
 
-/* ===== SIDEBAR – FIXED POSITIONING (gap below header) ===== */
+/* ===== SIDEBAR – FIXED POSITIONING (uses CSS var) ===== */
 .dashboard-sidebar {
     position: fixed;
-    top: 100px;
+    top: var(--navbar-height);
     left: 0;
     width: 260px;
-    height: calc(100vh - 80px);
+    height: calc(100vh - var(--navbar-height));
     background: rgba(5, 18, 30, 0.97);
     backdrop-filter: blur(16px);
     border-right: 1px solid rgba(226, 177, 59, 0.25);
@@ -524,8 +584,8 @@ button:active {
     .dashboard-sidebar {
         width: 280px;
         transform: translateX(-100%);
-        top: 80px;
-        height: calc(100vh - 80px);
+        top: var(--navbar-height);
+        height: calc(100vh - var(--navbar-height));
         border-right: 1px solid rgba(226, 177, 59, 0.2);
         box-shadow: 4px 0 40px rgba(0, 0, 0, 0.5);
     }
@@ -537,7 +597,7 @@ button:active {
     }
     .navbar {
         flex-direction: row;
-        padding: 0.8rem 1rem;
+        padding: 0.5rem 1rem;
         gap: 10px;
     }
     .stats-grid {
@@ -1053,8 +1113,8 @@ body.live-mode .whatsapp-float {
 }
 
 body.live-mode #jitsiOverlay {
-    top: 80px;
-    height: calc(100vh - 80px);
+    top: var(--navbar-height);
+    height: calc(100vh - var(--navbar-height));
     z-index: 999;
     background: #0B132B;
 }
@@ -1075,8 +1135,8 @@ body.live-mode #jitsiControls {
 /* ===== RESPONSIVE LIVE ROOM ===== */
 @media (max-width: 768px) {
     body.live-mode #jitsiOverlay {
-        top: 72px;
-        height: calc(100vh - 72px);
+        top: var(--navbar-height);
+        height: calc(100vh - var(--navbar-height));
     }
     .live-room-wrapper {
         flex-direction: column;
@@ -1110,6 +1170,7 @@ body.live-mode #jitsiControls {
         font-size: 0.7rem;
     }
 }
+
 /* ===== NOTIFICATION BADGE ===== */
 #notificationBell {
     position: relative;

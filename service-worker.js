@@ -1,66 +1,96 @@
-const CACHE_NAME = 'mubarak-academy-v2';
+const CACHE_NAME = 'mubarak-academy-v4'; // <-- CHANGED: v3 → v4 to force cache update
+
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/script.js',
-  '/manifest.json',
-  'https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap',
+  './',
+  './index.html',
+  './style.css',
+  './script.js',
+  './manifest.json',
+
+  // External assets (safe cache)
+  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css',
   'https://meet.jit.si/external_api.js'
 ];
 
+// INSTALL EVENT
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(async (cache) => {
+      try {
+        await cache.addAll(urlsToCache);
+      } catch (err) {
+        console.log('Cache addAll failed:', err);
+      }
+      return self.skipWaiting();
+    })
   );
 });
 
+// ACTIVATE EVENT (clean old cache)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
+    caches.keys().then((keys) => {
       return Promise.all(
-        cacheNames.filter(name => name !== CACHE_NAME)
-          .map(name => caches.delete(name))
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
       );
-    })
-    .then(() => self.clients.claim())
+    }).then(() => self.clients.claim())
   );
 });
 
+// FETCH EVENT
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  if (url.origin !== self.location.origin &&
-      !url.href.startsWith('https://fonts.googleapis.com') &&
-      !url.href.startsWith('https://cdnjs.cloudflare.com') &&
-      !url.href.startsWith('https://meet.jit.si')) {
-    return;
-  }
+  // Allow only same-origin + trusted external assets
+  const allowedExternal =
+    url.origin === self.location.origin ||
+    url.href.includes('fonts.googleapis.com') ||
+    url.href.includes('cdnjs.cloudflare.com') ||
+    url.href.includes('meet.jit.si');
 
-  if (request.mode === 'navigate' || request.destination === 'document') {
+  if (!allowedExternal) return;
+
+  // HTML NAVIGATION (important for GitHub Pages)
+  if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match(request)
-        .then(response => response || fetch(request).then(res => {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
-          return res;
-        }))
-        .catch(() => caches.match('/index.html'))
+      fetch(request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', clone));
+          return response;
+        })
+        .catch(() => caches.match('./index.html'))
     );
     return;
   }
 
+  // STATIC FILES CACHE FIRST
   event.respondWith(
-    caches.match(request)
-      .then(response => response || fetch(request).then(res => {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
-        return res;
-      }))
-      .catch(() => new Response('Offline', { status: 503 }))
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+
+      return fetch(request)
+        .then((response) => {
+          const clone = response.clone();
+
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, clone);
+          });
+
+          return response;
+        })
+        .catch(() => {
+          if (request.destination === 'document') {
+            return caches.match('./index.html');
+          }
+          return new Response('Offline', { status: 503 });
+        });
+    })
   );
 });

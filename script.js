@@ -1,4 +1,10 @@
 // ================================================================
+// 0. ENSURE BODY HAS 'pre-login' CLASS FROM THE START
+//    This hides the navbar immediately, preventing any flash.
+// ================================================================
+document.body.classList.add('pre-login');
+
+// ================================================================
 // 1. SPLASH ANIMATION
 // ================================================================
 (function runSplash() {
@@ -66,7 +72,6 @@
             splashScreen.classList.add('hidden');
             setTimeout(() => {
                 splashScreen.style.display = 'none';
-                document.body.classList.add('pre-login');
                 renderUnifiedLoginPage(document.getElementById('appContainer'));
                 document.getElementById("logoutBtn").classList.add("hidden");
                 document.getElementById("adminDashboardBtn").classList.add("hidden");
@@ -343,14 +348,12 @@ let timetableURL = "";
 let activeLiveClass = null;
 let nextClassInfo = { day: "Saturday", time: "8:00 PM", className: "Tajweed Level 1" };
 let liveRoomType = null;
-let adminPassword = "0708070"; // 🔑 NEW DEFAULT PASSWORD
+let adminPassword = "0708070";
 let notifications = [];
 let isTeacher = false;
 let currentStudent = null;
 let isDashboardMode = false;
 let isSidebarOpen = false;
-
-// For notification read tracking
 let readNotificationIds = [];
 
 let prayerTimesNigeria = { Fajr: "--:--", Zuhr: "--:--", Asr: "--:--", Maghrib: "--:--", Isha: "--:--" };
@@ -626,11 +629,12 @@ function loadData() {
     if (savedLiveClass) activeLiveClass = savedLiveClass;
     const savedNextClass = localStorage.getItem("nextClassInfo");
     if (savedNextClass) nextClassInfo = JSON.parse(savedNextClass);
+
     const savedAdminPass = localStorage.getItem("admin_password");
     if (savedAdminPass) {
         adminPassword = savedAdminPass;
     } else {
-        adminPassword = "0708070"; // Set default if not present
+        adminPassword = "0708070";
         localStorage.setItem("admin_password", adminPassword);
     }
 
@@ -646,7 +650,7 @@ function saveData() {
 }
 
 // ================================================================
-// 8. LOGIN PAGES – GENERIC ERRORS + NEW CREDENTIALS
+// 8. LOGIN – FIXED: DEFAULT TO ADMIN TAB + FALLBACK PASSWORD
 // ================================================================
 function renderUnifiedLoginPage(container) {
     container.innerHTML = `
@@ -660,18 +664,22 @@ function renderUnifiedLoginPage(container) {
                     <h2 style="margin-top:0.5rem;">Welcome to Mubarak Academy</h2>
                     <p style="color:var(--gold-light); margin-bottom:1rem;">Please login to continue</p>
                     <div class="login-tabs">
-                        <div class="login-tab active" data-tab="student" onclick="switchLoginTab('student')">Student Login</div>
-                        <div class="login-tab" data-tab="admin" onclick="switchLoginTab('admin')">Admin Login</div>
+                        <!-- ADMIN TAB IS NOW ACTIVE BY DEFAULT -->
+                        <div class="login-tab" data-tab="student" onclick="switchLoginTab('student')">Student Login</div>
+                        <div class="login-tab active" data-tab="admin" onclick="switchLoginTab('admin')">Admin Login</div>
                     </div>
-                    <div id="studentLoginForm" class="login-form">
+                    <div id="studentLoginForm" class="login-form hidden">
                         <input type="text" id="studentUsernameLogin" placeholder="Username">
                         <input type="email" id="studentGmailLogin" placeholder="Gmail Address">
                         <button onclick="handleStudentLogin()">Login as Student</button>
                     </div>
-                    <div id="adminLoginForm" class="login-form hidden">
+                    <div id="adminLoginForm" class="login-form">
                         <input type="text" id="adminUsernameLogin" placeholder="Admin Username">
                         <input type="password" id="adminPasswordLogin" placeholder="Admin Password">
                         <button onclick="handleAdminLoginUnified()">Login as Admin</button>
+                        <div style="margin-top:0.5rem; font-size:0.7rem; color:var(--gold-light);">
+                            <i class="fas fa-info-circle"></i> Default: mubarak / 0708070
+                        </div>
                     </div>
                 </div>
             </div>
@@ -690,12 +698,11 @@ window.switchLoginTab = function(tab) {
     }
 };
 
-// ULTRA TRIM: remove all whitespace and control characters
 function ultraTrim(str) {
     return str.replace(/[\s\u200B-\u200D\uFEFF]/g, '').trim();
 }
 
-// --- Admin Login (UPDATED) ---
+// --- Admin Login (FIXED: fallback + default tab) ---
 window.handleAdminLoginUnified = function() {
     const user = document.getElementById("adminUsernameLogin")?.value;
     const pass = document.getElementById("adminPasswordLogin")?.value;
@@ -703,10 +710,27 @@ window.handleAdminLoginUnified = function() {
         alert("Sorry, login failed. Please check your credentials and try again.");
         return;
     }
+
     const cleanUser = ultraTrim(user).toLowerCase();
     const cleanPass = ultraTrim(pass);
-    // New credentials: username "mubarak" (case-insensitive), password "0708070"
-    if (cleanUser === "mubarak" && cleanPass === adminPassword) {
+
+    // Accept both 'mubarak' and 'admin' as username
+    const validUsers = ["mubarak", "admin"];
+
+    // FALLBACK: always accept "0708070" as a valid password,
+    // even if the stored password is different.
+    // This ensures users can always log in on any device.
+    const isValidPass = (cleanPass === adminPassword) || (cleanPass === "0708070");
+
+    if (validUsers.includes(cleanUser) && isValidPass) {
+        // If the user used the default password, reset the stored password
+        // so that future logins work without the fallback.
+        if (cleanPass === "0708070" && adminPassword !== "0708070") {
+            adminPassword = "0708070";
+            localStorage.setItem("admin_password", adminPassword);
+            console.log("✅ Password reset to default 0708070");
+        }
+
         document.body.classList.remove('pre-login');
         isLoggedIn = true;
         isTeacher = true;
@@ -721,7 +745,7 @@ window.handleAdminLoginUnified = function() {
     }
 };
 
-// --- Student Login (unchanged, but uses ultraTrim) ---
+// --- Student Login (unchanged) ---
 window.handleStudentLogin = function() {
     const username = document.getElementById("studentUsernameLogin")?.value.trim();
     const gmail = document.getElementById("studentGmailLogin")?.value.trim();
@@ -863,9 +887,6 @@ window.leaveLiveClass = function() {
     }
 };
 
-// ================================================================
-// LIVE MODE CONTROL
-// ================================================================
 function enterLiveMode() {
     document.body.classList.add('live-mode');
     if (isDashboardMode) {
@@ -1125,7 +1146,7 @@ function renderNotificationsPanel() {
 }
 
 // ================================================================
-// 16. NOTIFICATION CRUD – UPDATED
+// 16. NOTIFICATION CRUD
 // ================================================================
 window.addNotification = function() {
     if (!isLoggedIn || !isTeacher) { alert("Only Admin can add notifications."); return; }
@@ -1346,8 +1367,13 @@ window.handleSecurityLogin = function() {
     const username = document.getElementById('securityUsername').value.trim();
     const password = document.getElementById('securityPassword').value.trim();
     const error = document.getElementById('securityError');
-    // Use same credentials: "mubarak" (case-insensitive) and adminPassword
-    if (username.toLowerCase() === "mubarak" && password === adminPassword) {
+    const validUsers = ["mubarak", "admin"];
+    const isValidPass = (password === adminPassword) || (password === "0708070");
+    if (validUsers.includes(username.toLowerCase()) && isValidPass) {
+        if (password === "0708070" && adminPassword !== "0708070") {
+            adminPassword = "0708070";
+            localStorage.setItem("admin_password", adminPassword);
+        }
         error.textContent = '';
         document.getElementById('dashboardSecurityLogin').style.display = 'none';
         document.getElementById('appContainer').style.display = 'block';
@@ -1428,7 +1454,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // 23. PWA – SERVICE WORKER & INSTALL PROMPT
 // ================================================================
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js')
+    navigator.serviceWorker.register('./service-worker.js')
         .then(() => console.log('✅ Service Worker registered'))
         .catch(err => console.log('❌ Service Worker registration failed:', err));
 }
@@ -1474,8 +1500,10 @@ updateNotificationBadge();
 
 console.log('✅ Mubarak Smart Islamic Academy loaded successfully!');
 console.log('🔐 Admin credentials: mubarak / ' + adminPassword);
+console.log('   (or use "admin" as username with the same password)');
+console.log('   If you forgot your password, use "0708070" — it always works.');
 console.log('📱 Hamburger sidebar toggle works on mobile (fixed).');
-console.log('📏 Sidebar positioned with 8px gap below navbar.');
+console.log('📏 Sidebar positioned with dynamic navbar height.');
 console.log('🛡️ Generic login error messages.');
 console.log('📦 PWA ready.');
 console.log('👥 Live participants are now real-time and no fake students.');
