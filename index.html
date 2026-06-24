@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Mubarak Smart Islamic Academy</title>
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a1928">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- External CSS -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+
+    <!-- ===== SPLASH SCREEN ===== -->
+    <div id="splashScreen">
+        <div class="splash-container" id="splashContainer">
+            <div class="quran-book closed" id="quranBook">
+                <div class="book-cover"></div>
+                <div class="book-page-left"></div>
+                <div class="book-page-right"></div>
+            </div>
+            <div class="splash-title" id="splashTitle"></div>
+            <div class="splash-arabic" id="splashArabic"></div>
+            <div class="splash-tagline" id="splashTagline">Online Islamic Learning</div>
+        </div>
+    </div>
+
+    <!-- ===== NAVBAR ===== -->
+    <div class="navbar">
+        <div class="logo-area">
+            <button class="navbar-hamburger" id="navbarHamburger" onclick="toggleDashboardSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="navbar-quran-icon"><i class="fas fa-book-open"></i></div>
+            <div class="logo-text">
+                <h1>Mubarak Smart Islamic Academy</h1>
+                <center><p>الأكاديمية الإسلامية للتميز القرآني</p></center>
+                <center><p>Online Islamic Learning</p></center>
+            </div>
+        </div>
+        <div class="nav-links">
+            <button class="nav-btn" onclick="showPage('home')">Home</button>
+            <button class="nav-btn" onclick="showPage('courses')">Courses</button>
+            <button class="nav-btn" onclick="showPage('teachers')">Teachers</button>
+            <button class="nav-btn admin-dashboard-btn hidden" id="adminDashboardBtn" onclick="handleDashboardClick()">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </button>
+            <!-- Notification Bell -->
+            <button class="nav-btn" id="notificationBell" onclick="toggleNotificationPanel()" style="position:relative;">
+                <i class="fas fa-bell"></i>
+                <span id="notificationBadge" style="position:absolute; top:-8px; right:-8px; background:red; color:white; border-radius:50%; padding:2px 6px; font-size:0.6rem; display:none;">0</span>
+            </button>
+            <button class="nav-btn hidden" id="logoutBtn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <!-- ===== SIDEBAR OVERLAY ===== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ===== DASHBOARD SIDEBAR ===== -->
+    <aside class="dashboard-sidebar" id="dashboardSidebar">
+        <div class="sidebar-header">
+            <div class="navbar-quran-icon" style="width:34px;height:34px;font-size:1.2rem;border-width:2px;">
+                <i class="fas fa-book-open"></i>
+            </div>
+            <span class="sidebar-brand">Mubarak Academy</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="sidebar-link active" data-section="dashboard" onclick="switchDashboardSection('dashboard')">
+                <i class="fas fa-tachometer-alt"></i><span>Dashboard</span>
+            </a>
+            <a href="#" class="sidebar-link" data-section="live" onclick="switchDashboardSection('live')">
+                <i class="fas fa-video"></i><span>Live Classes</span>
+                <span class="sidebar-badge live-badge" id="liveStatusBadge" style="display:none;">LIVE</span>
+            </a>
+            <a href="#" class="sidebar-link" data-section="students" onclick="switchDashboardSection('students')">
+                <i class="fas fa-users"></i><span>Students</span>
+                <span class="sidebar-badge" id="studentCount">0</span>
+            </a>
+            <a href="#" class="sidebar-link" data-section="attendance" onclick="switchDashboardSection('attendance')">
+                <i class="fas fa-check-circle"></i><span>Attendance</span>
+            </a>
+            <a href="#" class="sidebar-link" data-section="teachersManage" onclick="switchDashboardSection('teachersManage')">
+                <i class="fas fa-chalkboard-user"></i><span>Teachers</span>
+                <span class="sidebar-badge" id="teacherCount">0</span>
+            </a>
+            <a href="#" class="sidebar-link" data-section="notifications" onclick="switchDashboardSection('notifications')">
+                <i class="fas fa-bell"></i><span>Notifications</span>
+                <span class="sidebar-badge" id="notifCount">0</span>
+            </a>
+            <a href="#" class="sidebar-link" data-section="settings" onclick="switchDashboardSection('settings')">
+                <i class="fas fa-cog"></i><span>Settings</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="sidebar-user" onclick="handleLogout()">
+                <img src="https://ui-avatars.com/api/?name=Admin&background=e2b13b&color=0a1620" alt="Admin" class="sidebar-avatar">
+                <div class="sidebar-user-info">
+                    <span class="sidebar-username">Admin</span>
+                    <span class="sidebar-userrole">Click to Logout</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ===== APP CONTAINER ===== -->
+    <div id="appContainer" class="container"></div>
+
+    <!-- ===== WHATSAPP FLOAT ===== -->
+    <a href="#" id="whatsappFloatBtn" class="whatsapp-float" target="_blank">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+
+    <!-- ===== JITSI LIVE ROOM OVERLAY ===== -->
+    <div id="jitsiOverlay">
+        <!-- Error/Reconnect overlay -->
+        <div id="jitsiConnectionStatus" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:10; background:rgba(0,0,0,0.8); padding:2rem; border-radius:16px; text-align:center; border:1px solid var(--gold);">
+            <i class="fas fa-exclamation-triangle" style="color:var(--gold); font-size:2rem; margin-bottom:1rem;"></i>
+            <p id="connectionMessage" style="color:#fff; margin-bottom:1rem;">Reconnecting...</p>
+            <button onclick="retryJitsiConnection()" style="background:var(--gold); color:#0a1620; padding:10px 24px; border-radius:30px; border:none; font-weight:600; cursor:pointer;">Retry</button>
+        </div>
+        <div class="live-room-wrapper">
+            <div class="video-container">
+                <div id="jitsiIframeContainer"></div>
+            </div>
+            <div class="participants-container">
+                <h3><i class="fas fa-users"></i> Participants</h3>
+                <div id="liveParticipantsContainer">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+        <div id="jitsiControls">
+            <span class="jitsi-room-label" id="jitsiRoomLabel">📹 Live Class</span>
+            <button class="leave-btn" onclick="window.leaveLiveClass()">✕ Leave Class</button>
+            <button id="jitsiEndClassBtn" class="end-btn" onclick="window.stopLiveClass()" style="display:none;">⏹ End Class</button>
+        </div>
+    </div>
+
+    <!-- Jitsi External API -->
+    <script src="https://meet.jit.si/external_api.js"></script>
+    <!-- Main Script -->
+    <script src="script.js"></script>
+</body>
+</html>
