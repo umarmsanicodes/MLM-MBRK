@@ -1334,6 +1334,10 @@ body.live-mode #jitsiControls {
 .splash-tagline.visible {
     opacity: 1;
 }
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
 @media (max-width: 600px) {
     .quran-book {

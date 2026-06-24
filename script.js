@@ -70,7 +70,7 @@
                 renderUnifiedLoginPage(document.getElementById('appContainer'));
                 document.getElementById("logoutBtn").classList.add("hidden");
                 document.getElementById("adminDashboardBtn").classList.add("hidden");
-                updateNotificationBadge(); // Update badge after login
+                updateNotificationBadge();
             }, 1200);
         }, 1800);
     }, finalDuration);
@@ -343,7 +343,7 @@ let timetableURL = "";
 let activeLiveClass = null;
 let nextClassInfo = { day: "Saturday", time: "8:00 PM", className: "Tajweed Level 1" };
 let liveRoomType = null;
-let adminPassword = "admin123";
+let adminPassword = "0708070"; // 🔑 NEW DEFAULT PASSWORD
 let notifications = [];
 let isTeacher = false;
 let currentStudent = null;
@@ -416,7 +416,6 @@ function getCurrentUserId() {
 function updateNotificationBadge() {
     const badge = document.getElementById('notificationBadge');
     if (!badge) return;
-    // Count unread notifications
     const unread = notifications.filter(n => !readNotificationIds.includes(n.id)).length;
     if (unread > 0) {
         badge.textContent = unread;
@@ -424,11 +423,9 @@ function updateNotificationBadge() {
     } else {
         badge.style.display = 'none';
     }
-    // Update sidebar badge
     const notifCount = document.getElementById('notifCount');
     if (notifCount) notifCount.textContent = unread;
 
-    // PWA Badging API
     if (navigator.setAppBadge) {
         navigator.setAppBadge(unread).catch(() => {});
     } else if (navigator.clearAppBadge) {
@@ -447,25 +444,20 @@ function markAllNotificationsRead() {
 }
 
 function toggleNotificationPanel() {
-    // Navigate to notifications section in dashboard
     if (isLoggedIn && isTeacher) {
-        // If admin, switch dashboard to notifications
         if (isDashboardMode) {
             switchDashboardSection('notifications');
         } else {
-            // If not in dashboard, go to dashboard notifications
             showPage('dashboard');
             setTimeout(() => {
                 switchDashboardSection('notifications');
             }, 300);
         }
     } else if (isLoggedIn && !isTeacher) {
-        // Students can view notifications in the home page or a modal
         alert('Check your notifications in the dashboard (Admin only for now)');
     } else {
         alert('Please login to view notifications.');
     }
-    // Mark as read when they open the panel (will be done in renderNotificationsPanel)
 }
 
 // ================================================================
@@ -585,7 +577,6 @@ function updateSidebarBadges() {
     if (teacherBadge) teacherBadge.textContent = teachers ? teachers.length : 0;
     if (notifBadge) notifBadge.textContent = notifications ? notifications.length : 0;
     if (liveBadge) liveBadge.style.display = activeLiveClass ? 'inline-block' : 'none';
-    // Also update notification badge
     updateNotificationBadge();
 }
 
@@ -629,7 +620,6 @@ function loadData() {
             date: new Date().toLocaleString(), readBy: [] }];
         saveData();
     }
-    // Ensure all notifications have readBy array
     notifications.forEach(n => { if (!n.readBy) n.readBy = []; });
 
     const savedLiveClass = localStorage.getItem("activeLiveClass");
@@ -640,7 +630,7 @@ function loadData() {
     if (savedAdminPass) {
         adminPassword = savedAdminPass;
     } else {
-        adminPassword = "admin123";
+        adminPassword = "0708070"; // Set default if not present
         localStorage.setItem("admin_password", adminPassword);
     }
 
@@ -656,7 +646,7 @@ function saveData() {
 }
 
 // ================================================================
-// 8. LOGIN PAGES – GENERIC ERRORS
+// 8. LOGIN PAGES – GENERIC ERRORS + NEW CREDENTIALS
 // ================================================================
 function renderUnifiedLoginPage(container) {
     container.innerHTML = `
@@ -700,10 +690,23 @@ window.switchLoginTab = function(tab) {
     }
 };
 
+// ULTRA TRIM: remove all whitespace and control characters
+function ultraTrim(str) {
+    return str.replace(/[\s\u200B-\u200D\uFEFF]/g, '').trim();
+}
+
+// --- Admin Login (UPDATED) ---
 window.handleAdminLoginUnified = function() {
     const user = document.getElementById("adminUsernameLogin")?.value;
     const pass = document.getElementById("adminPasswordLogin")?.value;
-    if (user === "admin" && pass === adminPassword) {
+    if (!user || !pass) {
+        alert("Sorry, login failed. Please check your credentials and try again.");
+        return;
+    }
+    const cleanUser = ultraTrim(user).toLowerCase();
+    const cleanPass = ultraTrim(pass);
+    // New credentials: username "mubarak" (case-insensitive), password "0708070"
+    if (cleanUser === "mubarak" && cleanPass === adminPassword) {
         document.body.classList.remove('pre-login');
         isLoggedIn = true;
         isTeacher = true;
@@ -718,6 +721,7 @@ window.handleAdminLoginUnified = function() {
     }
 };
 
+// --- Student Login (unchanged, but uses ultraTrim) ---
 window.handleStudentLogin = function() {
     const username = document.getElementById("studentUsernameLogin")?.value.trim();
     const gmail = document.getElementById("studentGmailLogin")?.value.trim();
@@ -725,8 +729,9 @@ window.handleStudentLogin = function() {
         alert("Sorry, login failed. Please check your credentials and try again.");
         return;
     }
-    const found = students.find(s => (s.username === username || s.email === username) && (s.gmail === gmail || s
-        .email === gmail));
+    const cleanUser = ultraTrim(username);
+    const cleanGmail = ultraTrim(gmail);
+    const found = students.find(s => (s.username === cleanUser || s.email === cleanUser) && (s.gmail === cleanGmail || s.email === cleanGmail));
     if (!found) {
         alert("Sorry, login failed. Please check your credentials and try again.");
         return;
@@ -1012,7 +1017,6 @@ function switchDashboardSection(section) {
     else if (section === 'live') contentDiv.innerHTML = renderLiveClassPanel();
     else if (section === 'notifications') {
         contentDiv.innerHTML = renderNotificationsPanel();
-        // Mark notifications as read when viewing
         markAllNotificationsRead();
     }
     else if (section === 'settings') contentDiv.innerHTML = renderSettingsPanel();
@@ -1042,7 +1046,7 @@ function renderAttendancePanel() {
 }
 
 // ================================================================
-// 14. LIVE CLASS PANEL – NO FAKE STUDENTS
+// 14. LIVE CLASS PANEL
 // ================================================================
 function renderLiveClassPanel() {
     if (!requireAuth()) return '';
@@ -1096,7 +1100,6 @@ function renderLiveClassPanel() {
 // ================================================================
 function renderNotificationsPanel() {
     if (!requireAuth()) return '';
-    // Mark all as read when viewed
     markAllNotificationsRead();
 
     let html = `<div class="glass-card"><h3>Manage Notifications</h3>`;
@@ -1147,7 +1150,6 @@ window.deleteNotification = function(id) {
     if (!isTeacher) { alert("Only Admin can delete notifications."); return; }
     if (confirm("Delete this notification?")) {
         notifications = notifications.filter(n => n.id !== id);
-        // Also remove from read list
         readNotificationIds = readNotificationIds.filter(rid => rid !== id);
         saveData();
         saveNotificationData();
@@ -1179,7 +1181,7 @@ function renderSettingsPanel() {
 }
 
 // ================================================================
-// 18. CRUD OPERATIONS (unchanged, but we add notification badge update)
+// 18. CRUD OPERATIONS
 // ================================================================
 window.toggleBlockStudent = function(id, source) {
     const student = students.find(s => s.id === id);
@@ -1319,7 +1321,7 @@ window.refreshData = function() {
 };
 
 // ================================================================
-// 20. DASHBOARD SECURITY LOGIN
+// 20. DASHBOARD SECURITY LOGIN (UPDATED)
 // ================================================================
 const securityLoginHTML = `
         <div id="dashboardSecurityLogin" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center;">
@@ -1344,7 +1346,8 @@ window.handleSecurityLogin = function() {
     const username = document.getElementById('securityUsername').value.trim();
     const password = document.getElementById('securityPassword').value.trim();
     const error = document.getElementById('securityError');
-    if (username === 'admin' && password === adminPassword) {
+    // Use same credentials: "mubarak" (case-insensitive) and adminPassword
+    if (username.toLowerCase() === "mubarak" && password === adminPassword) {
         error.textContent = '';
         document.getElementById('dashboardSecurityLogin').style.display = 'none';
         document.getElementById('appContainer').style.display = 'block';
@@ -1430,12 +1433,8 @@ if ('serviceWorker' in navigator) {
         .catch(err => console.log('❌ Service Worker registration failed:', err));
 }
 
-// Push notification event listener (for future backend)
-// This will be triggered when a push notification is received
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(registration => {
-        // Listen for push events (we need backend to send, but we're ready)
-        // The service worker itself will handle the push event.
         console.log('Service Worker ready for push notifications.');
     });
 }
@@ -1474,7 +1473,7 @@ loadNotificationData();
 updateNotificationBadge();
 
 console.log('✅ Mubarak Smart Islamic Academy loaded successfully!');
-console.log('🔐 Admin credentials: admin / ' + adminPassword);
+console.log('🔐 Admin credentials: mubarak / ' + adminPassword);
 console.log('📱 Hamburger sidebar toggle works on mobile (fixed).');
 console.log('📏 Sidebar positioned with 8px gap below navbar.');
 console.log('🛡️ Generic login error messages.');

@@ -1,0 +1,26 @@
+{
+  "name": "Mubarak Smart Islamic Academy",
+  "short_name": "Mubarak Academy",
+  "description": "Online Islamic Learning Platform with Live Classes",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0a1928",
+  "background_color": "#0a1928",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%230a1928'/%3E%3Ctext x='256' y='340' font-size='280' text-anchor='middle' font-family='Arial' fill='%23e2b13b'%3E﷽%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%230a1928'/%3E%3Ctext x='256' y='340' font-size='280' text-anchor='middle' font-family='Arial' fill='%23e2b13b'%3E﷽%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
