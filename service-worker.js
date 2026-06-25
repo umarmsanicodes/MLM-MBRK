@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mubarak-academy-v5'; // Incremented to force cache refresh
+const CACHE_NAME = 'mubarak-academy-v9'; // Incremented to force cache refresh
 
 const urlsToCache = [
   './',

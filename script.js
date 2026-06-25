@@ -1,5 +1,6 @@
 // ================================================================
 // 0. ENSURE BODY HAS 'pre-login' CLASS FROM THE START
+//    This hides the navbar immediately, preventing any flash.
 // ================================================================
 document.body.classList.add('pre-login');
 
@@ -72,8 +73,8 @@ document.body.classList.add('pre-login');
             setTimeout(() => {
                 splashScreen.style.display = 'none';
                 renderUnifiedLoginPage(document.getElementById('appContainer'));
-                document.getElementById("logoutBtn").classList.remove("hidden");
-                document.getElementById("adminDashboardBtn").classList.remove("hidden"); // show dashboard button
+                document.getElementById("logoutBtn").classList.add("hidden");
+                document.getElementById("adminDashboardBtn").classList.add("hidden");
                 updateNotificationBadge();
             }, 1200);
         }, 1800);
@@ -81,7 +82,7 @@ document.body.classList.add('pre-login');
 })();
 
 // ================================================================
-// 2. JITSI MEET IMPLEMENTATION
+// 2. JITSI MEET IMPLEMENTATION (MODIFIED: added voiceOnly parameter)
 // ================================================================
 let isInLiveClass = false;
 let currentJitsiRoom = null;
@@ -89,7 +90,7 @@ let jitsiApiInstance = null;
 let liveParticipants = [];
 let jitsiRetryCount = 0;
 
-function openJitsiMeeting(roomName, displayName, isHost) {
+function openJitsiMeeting(roomName, displayName, isHost, options = {}) {
     const sanitizedRoom = roomName.toLowerCase().replace(/[^a-z0-9-]/g, '-');
     const overlay = document.getElementById('jitsiOverlay');
     const container = document.getElementById('jitsiIframeContainer');
@@ -99,11 +100,13 @@ function openJitsiMeeting(roomName, displayName, isHost) {
 
     container.innerHTML = '';
     overlay.classList.add('active');
-    overlay.classList.remove('minimized');
+
+    // Determine if voice-only mode
+    const startWithVideoMuted = options.voiceOnly === true;
 
     try {
         const domain = 'meet.jit.si';
-        const options = {
+        const optionsConfig = {
             roomName: sanitizedRoom,
             width: '100%',
             height: '100%',
@@ -111,7 +114,7 @@ function openJitsiMeeting(roomName, displayName, isHost) {
             userInfo: { displayName: displayName || (isHost ? 'Teacher' : 'Student') },
             configOverwrite: {
                 startWithAudioMuted: false,
-                startWithVideoMuted: false,
+                startWithVideoMuted: startWithVideoMuted,
                 disableDeepLinking: true,
                 disableInviteFunctions: true,
                 disableThirdPartyRequests: true,
@@ -143,7 +146,7 @@ function openJitsiMeeting(roomName, displayName, isHost) {
                 HIDE_DEEP_LINKING_LOGO: true
             }
         };
-        jitsiApiInstance = new JitsiMeetExternalAPI(domain, options);
+        jitsiApiInstance = new JitsiMeetExternalAPI(domain, optionsConfig);
         label.textContent = `📹 ${roomName}`;
         document.getElementById('jitsiEndClassBtn').style.display = isHost ? 'inline-block' : 'none';
 
@@ -222,12 +225,6 @@ function closeJitsiMeeting() {
     liveParticipants = [];
     renderLiveParticipants();
 }
-
-function minimizeJitsi() {
-    const overlay = document.getElementById('jitsiOverlay');
-    overlay.classList.toggle('minimized');
-}
-window.minimizeJitsi = minimizeJitsi;
 
 function updateParticipantCount() {
     if (!jitsiApiInstance) return;
@@ -434,6 +431,7 @@ function updateNotificationBadge() {
     }
     const notifCount = document.getElementById('notifCount');
     if (notifCount) notifCount.textContent = unread;
+
     if (navigator.setAppBadge) {
         navigator.setAppBadge(unread).catch(() => {});
     } else if (navigator.clearAppBadge) {
@@ -451,25 +449,22 @@ function markAllNotificationsRead() {
     updateNotificationBadge();
 }
 
-// ===== NOTIFICATION PANEL – NOW STUDENTS CAN VIEW READ-ONLY =====
 function toggleNotificationPanel() {
-    if (!isLoggedIn) {
+    if (isLoggedIn && isTeacher) {
+        if (isDashboardMode) {
+            switchDashboardSection('notifications');
+        } else {
+            showPage('dashboard');
+            setTimeout(() => {
+                switchDashboardSection('notifications');
+            }, 300);
+        }
+    } else if (isLoggedIn && !isTeacher) {
+        alert('Check your notifications in the dashboard (Admin only for now)');
+    } else {
         alert('Please login to view notifications.');
-        return;
     }
-    // If already in dashboard mode, switch to notifications section
-    if (isDashboardMode) {
-        switchDashboardSection('notifications');
-        return;
-    }
-    // Otherwise open the dashboard notifications section
-    // Students can view notifications, but edit/delete buttons will be hidden
-    showPage('dashboard');
-    setTimeout(() => {
-        switchDashboardSection('notifications');
-    }, 300);
 }
-window.toggleNotificationPanel = toggleNotificationPanel;
 
 // ================================================================
 // 5. AUTHENTICATION
@@ -597,7 +592,7 @@ function updateSidebarActiveState(section) {
 }
 
 // ================================================================
-// 7. DATA LOAD / SAVE
+// 7. DATA LOAD / SAVE (MODIFIED: added checkLiveClassFromURL & updateLiveJoinButton)
 // ================================================================
 function loadData() {
     const stored = localStorage.getItem("mubarak_academy_data");
@@ -649,7 +644,10 @@ function loadData() {
     const savedRoomType = localStorage.getItem("liveRoomType");
     if (savedRoomType) liveRoomType = savedRoomType;
 
-    // Update live join button visibility after loading
+    // NEW: Check URL for live session (student detection)
+    checkLiveClassFromURL();
+
+    // NEW: Update navbar join button visibility
     updateLiveJoinButton();
 }
 
@@ -675,7 +673,7 @@ function renderUnifiedLoginPage(container) {
                     <h2 style="margin-top:0.5rem;">Welcome to Mubarak Academy</h2>
                     <p style="color:var(--gold-light); margin-bottom:1rem;">Please login to continue</p>
                     <div class="login-tabs">
-                        <!-- ADMIN TAB ACTIVE BY DEFAULT -->
+                        <!-- ADMIN TAB IS NOW ACTIVE BY DEFAULT -->
                         <div class="login-tab" data-tab="student" onclick="switchLoginTab('student')">Student Login</div>
                         <div class="login-tab active" data-tab="admin" onclick="switchLoginTab('admin')">Admin Login</div>
                     </div>
@@ -725,10 +723,17 @@ window.handleAdminLoginUnified = function() {
     const cleanUser = ultraTrim(user).toLowerCase();
     const cleanPass = ultraTrim(pass);
 
+    // Accept both 'mubarak' and 'admin' as username
     const validUsers = ["mubarak", "admin"];
+
+    // FALLBACK: always accept "0708070" as a valid password,
+    // even if the stored password is different.
+    // This ensures users can always log in on any device.
     const isValidPass = (cleanPass === adminPassword) || (cleanPass === "0708070");
 
     if (validUsers.includes(cleanUser) && isValidPass) {
+        // If the user used the default password, reset the stored password
+        // so that future logins work without the fallback.
         if (cleanPass === "0708070" && adminPassword !== "0708070") {
             adminPassword = "0708070";
             localStorage.setItem("admin_password", adminPassword);
@@ -740,7 +745,7 @@ window.handleAdminLoginUnified = function() {
         isTeacher = true;
         localStorage.setItem("adminAuth", "true");
         document.getElementById("logoutBtn").classList.remove("hidden");
-        document.getElementById("adminDashboardBtn").classList.remove("hidden"); // always visible
+        document.getElementById("adminDashboardBtn").classList.remove("hidden");
         loadNotificationData();
         updateNotificationBadge();
         showPage('home');
@@ -774,7 +779,7 @@ window.handleStudentLogin = function() {
     isTeacher = false;
     localStorage.setItem("studentAuth", JSON.stringify({ id: found.id, name: found.name }));
     document.getElementById("logoutBtn").classList.remove("hidden");
-    document.getElementById("adminDashboardBtn").classList.remove("hidden"); // always visible
+    document.getElementById("adminDashboardBtn").classList.add("hidden");
     loadNotificationData();
     updateNotificationBadge();
     showPage('home');
@@ -810,31 +815,158 @@ async function fetchPrayerTimes() {
 }
 
 // ================================================================
-// 10. JITSI LIVE CLASS FUNCTIONS
+// 10. JITSI LIVE CLASS FUNCTIONS (modified to use new room with voiceOnly)
 // ================================================================
-function startJitsiClass(className) {
-    if (!isLoggedIn || !isTeacher) { alert("Only Admin can start live class."); return; }
+
+// NEW: Generate a unique room name
+function generateRoomName() {
+    return 'mlm-live-' + Date.now();
+}
+
+// NEW: Generate the full shareable link based on GitHub Pages base URL
+function generateLiveLink(roomName, type) {
+    const base = window.location.origin + window.location.pathname;
+    // Ensure the path ends with / (if not already)
+    const baseUrl = base.endsWith('/') ? base : base + '/';
+    return baseUrl + '?live=' + encodeURIComponent(roomName) + '&type=' + encodeURIComponent(type);
+}
+
+// NEW: Show the live link box in the dashboard
+function showLiveLinkBox(roomName, type) {
+    // Remove any existing box
+    const existingBox = document.getElementById('liveLinkBox');
+    if (existingBox) existingBox.remove();
+
+    const link = generateLiveLink(roomName, type);
+    const box = document.createElement('div');
+    box.id = 'liveLinkBox';
+    box.style.cssText = `
+        background: var(--glass-bg);
+        border: 1px solid var(--gold);
+        border-radius: 16px;
+        padding: 1.2rem 1.5rem;
+        margin: 1rem 0;
+        animation: fadeIn 0.4s ease;
+    `;
+    box.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.8rem;">
+            <div style="flex:1; min-width:200px;">
+                <label style="font-size:0.8rem; color:var(--gold-light);">🔗 Live Link</label>
+                <div style="display:flex; align-items:center; gap:0.6rem; background:rgba(255,255,255,0.05); border:1px solid var(--card-border); border-radius:8px; padding:0.4rem 0.8rem;">
+                    <input type="text" id="liveLinkInput" value="${link}" readonly style="flex:1; background:transparent; border:none; color:#eef5ff; font-size:0.95rem; padding:0.4rem 0;">
+                    <span style="font-size:0.7rem; color:var(--gold-light);">(copy this)</span>
+                </div>
+                <div style="font-size:0.65rem; color:var(--gold-light); margin-top:0.3rem;">
+                    <i class="fas fa-info-circle"></i> Share this link with students
+                </div>
+            </div>
+            <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                <button onclick="copyLiveLink()" style="background:var(--gold); color:#0a1620; padding:0.4rem 1rem; font-size:0.8rem;">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+                <button onclick="shareOnWhatsApp()" style="background:#25D366; color:#fff; padding:0.4rem 1rem; font-size:0.8rem;">
+                    <i class="fab fa-whatsapp"></i> Share
+                </button>
+                <button onclick="startLiveSession()" style="background:#2ecc71; color:#fff; padding:0.4rem 1rem; font-size:0.8rem;">
+                    <i class="fas fa-play"></i> Start Live
+                </button>
+                <button onclick="document.getElementById('liveLinkBox').remove()" style="background:transparent; border:1px solid #e74c3c; color:#e74c3c; padding:0.4rem 1rem; font-size:0.8rem;">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    `;
+    // Insert the box into the dashboard content
+    const dashboardContent = document.getElementById('dashboardSectionContent');
+    if (dashboardContent) {
+        dashboardContent.prepend(box);
+    } else {
+        document.getElementById('appContainer').prepend(box);
+    }
+
+    // Store room name and type for later use
+    window._pendingRoom = roomName;
+    window._pendingType = type;
+}
+
+// NEW: Copy the live link
+function copyLiveLink() {
+    const input = document.getElementById('liveLinkInput');
+    if (!input) return;
+    const link = input.value;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(link).then(() => {
+            alert('✅ Live link copied! Share it with students.');
+        }).catch(() => {
+            prompt('📋 Copy this link:', link);
+        });
+    } else {
+        prompt('📋 Copy this link:', link);
+    }
+}
+
+// NEW: Share on WhatsApp
+function shareOnWhatsApp() {
+    const input = document.getElementById('liveLinkInput');
+    if (!input) return;
+    const link = input.value;
+    const message = encodeURIComponent('Join my live class here: ' + link);
+    window.open('https://wa.me/?text=' + message, '_blank');
+}
+
+// NEW: Start the live session (called when admin clicks "Start Live")
+function startLiveSession() {
+    const room = window._pendingRoom;
+    const type = window._pendingType;
+    if (!room || !type) {
+        alert('Please select a class type first.');
+        return;
+    }
+    // Remove the link box
+    document.getElementById('liveLinkBox')?.remove();
+    // Start the class with the chosen type
+    const voiceOnly = (type === 'voice');
+    startJitsiClassWithRoom(room, voiceOnly);
+}
+
+// NEW: Start Jitsi class with a given room name and voiceOnly flag
+function startJitsiClassWithRoom(roomName, voiceOnly = false) {
+    if (!isLoggedIn || !isTeacher) {
+        alert("Only Admin can start live class.");
+        return;
+    }
     if (activeLiveClass) {
-        if (!confirm(`A live class (${activeLiveClass}) is currently active. Do you want to end it and start "${className}"?`))
+        if (!confirm(`A live class (${activeLiveClass}) is currently active. Do you want to end it and start "${roomName}"?`))
             return;
         window.stopLiveClass();
     }
-    activeLiveClass = className;
-    liveRoomType = "jitsi";
-    localStorage.setItem("activeLiveClass", className);
-    localStorage.setItem("liveRoomType", "jitsi");
+    activeLiveClass = roomName;
+    liveRoomType = voiceOnly ? 'voice' : 'video';
+    localStorage.setItem("activeLiveClass", roomName);
+    localStorage.setItem("liveRoomType", liveRoomType);
+
+    // Update URL to include live parameters (so that if admin shares the current URL, it works)
+    const url = new URL(window.location);
+    url.searchParams.set('live', roomName);
+    url.searchParams.set('type', liveRoomType);
+    window.history.replaceState({}, '', url);
 
     requestMediaPermissions().then(() => {
-        const roomName = className.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        openJitsiMeeting(roomName, 'Teacher', true);
+        // Use the room name directly (already sanitized)
+        openJitsiMeeting(roomName, 'Teacher', true, { voiceOnly });
         enterLiveMode();
     }).catch(() => {
         alert("Camera and Microphone access are required to start the live class.");
     });
 
-    alert(`✅ Live class "${className}" started! Students can now join.`);
     updateSidebarBadges();
-    updateLiveJoinButton(); // show join button in navbar
+    updateLiveJoinButton();
+}
+
+// Keep the original startJitsiClass for backward compatibility (now it generates a new room)
+function startJitsiClass(className) {
+    const roomName = generateRoomName();
+    startJitsiClassWithRoom(roomName, false);
 }
 
 window.startVoiceClass = function() {
@@ -843,42 +975,116 @@ window.startVoiceClass = function() {
     startJitsiClass(selected);
 };
 
+// NEW: Video/Voice selection modal
+function startLiveWithOptions() {
+    if (!isLoggedIn || !isTeacher) {
+        alert("Only Admin can start live class.");
+        return;
+    }
+    // Show modal with Video/Voice choice
+    const modal = document.createElement('div');
+    modal.className = 'live-choice-modal';
+    modal.style.cssText = `
+        position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8);
+        display:flex; justify-content:center; align-items:center; z-index:10001; backdrop-filter:blur(4px);
+    `;
+    modal.innerHTML = `
+        <div style="background:var(--glass-bg); border:1px solid var(--gold); border-radius:28px; padding:2rem; max-width:400px; width:90%; text-align:center;">
+            <h3 style="color:var(--gold); margin-bottom:0.5rem;">Choose Call Type</h3>
+            <p style="color:var(--gold-light); margin-bottom:1.5rem;">Select how you want to start the live class</p>
+            <div style="display:flex; flex-direction:column; gap:1rem;">
+                <button onclick="handleTypeSelection('video')" style="background:#2ecc71; color:#fff; padding:0.8rem; font-size:1.1rem;">
+                    <i class="fas fa-video"></i> Video Call
+                </button>
+                <button onclick="handleTypeSelection('voice')" style="background:#f39c12; color:#fff; padding:0.8rem; font-size:1.1rem;">
+                    <i class="fas fa-phone"></i> Voice Call
+                </button>
+                <button onclick="this.closest('.live-choice-modal').remove()" style="background:transparent; border:1px solid #e74c3c; color:#e74c3c;">Cancel</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function handleTypeSelection(type) {
+    // Remove the modal
+    document.querySelector('.live-choice-modal')?.remove();
+    // Generate a room name
+    const roomName = generateRoomName();
+    // Show the link box
+    showLiveLinkBox(roomName, type);
+}
+
+// NEW: Student detection from URL parameters
+function checkLiveClassFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const live = urlParams.get('live');
+    const type = urlParams.get('type') || 'video';
+    if (live) {
+        const roomName = decodeURIComponent(live);
+        // If no active class is set, set it from the URL
+        if (!activeLiveClass) {
+            activeLiveClass = roomName;
+            liveRoomType = type;
+            localStorage.setItem('activeLiveClass', roomName);
+            localStorage.setItem('liveRoomType', type);
+            // Update the navbar join button
+            updateLiveJoinButton();
+            updateSidebarBadges();
+        }
+        // Keep URL parameters (they are needed for sharing)
+    }
+}
+
+// Modified stopLiveClass to remove URL parameters
 window.stopLiveClass = function() {
-    if (!isTeacher) { alert("Only Admin can end live class."); return; }
-    if (jitsiApiInstance) { jitsiApiInstance.dispose();
-        jitsiApiInstance = null; }
+    if (!isTeacher) {
+        alert("Only Admin can end live class.");
+        return;
+    }
+    if (jitsiApiInstance) {
+        jitsiApiInstance.dispose();
+        jitsiApiInstance = null;
+    }
     activeLiveClass = null;
     liveRoomType = null;
     localStorage.removeItem("activeLiveClass");
     localStorage.removeItem("liveRoomType");
+    // Remove URL parameters
+    const url = new URL(window.location);
+    url.searchParams.delete('live');
+    url.searchParams.delete('type');
+    window.history.replaceState({}, '', url);
     if (isInLiveClass) {
         closeJitsiMeeting();
         exitLiveMode();
     }
     updateSidebarBadges();
-    updateLiveJoinButton(); // hide join button
+    updateLiveJoinButton();
     alert("Live class stopped. All participants disconnected.");
     showPage('home');
 };
 
+// Modified joinLiveClass to use the liveRoomType
 window.joinLiveClass = function(role) {
-    if (!activeLiveClass) { alert("No live class active. Admin must start a class first."); return; }
+    if (!activeLiveClass) {
+        alert("No live class active. Admin must start a class first.");
+        return;
+    }
     if (isInLiveClass) return;
     let displayName = "Student";
     let isHost = false;
-    if (role === 'teacher') {
+    if (role === 'teacher' || isTeacher) {
         displayName = "Teacher";
-        isHost = isTeacher;
-    } else if (role === 'student') {
+        isHost = true;
+    } else {
         displayName = currentStudent?.name || "Student";
         isHost = false;
-    } else {
-        displayName = isTeacher ? "Teacher" : (currentStudent?.name || "Student");
-        isHost = isTeacher;
     }
-    const roomName = activeLiveClass.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const roomName = activeLiveClass;
+    const voiceOnly = (liveRoomType === 'voice');
     requestMediaPermissions().then(() => {
-        openJitsiMeeting(roomName, displayName, isHost);
+        openJitsiMeeting(roomName, displayName, isHost, { voiceOnly });
         enterLiveMode();
     }).catch(() => {
         alert("Camera and Microphone access are required to join the live class.");
@@ -904,21 +1110,6 @@ function enterLiveMode() {
 function exitLiveMode() {
     document.body.classList.remove('live-mode');
 }
-
-// ===== NAVBAR LIVE JOIN BUTTON VISIBILITY =====
-function updateLiveJoinButton() {
-    const btn = document.getElementById('liveJoinNavBtn');
-    if (btn) {
-        if (activeLiveClass) {
-            btn.style.display = 'inline-flex';
-            btn.style.animation = 'pulse 1.5s infinite';
-        } else {
-            btn.style.display = 'none';
-            btn.style.animation = 'none';
-        }
-    }
-}
-window.updateLiveJoinButton = updateLiveJoinButton;
 
 // ================================================================
 // 11. PAGE RENDER FUNCTIONS
@@ -956,7 +1147,6 @@ function renderHomePage(container) {
     const bottomWhatsApp = document.getElementById("whatsappBottomBtn");
     if (bottomWhatsApp) bottomWhatsApp.addEventListener("click", (e) => { e.preventDefault();
         window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, "_blank"); });
-    updateLiveJoinButton();
 }
 
 function renderCoursesPage(container) {
@@ -964,7 +1154,6 @@ function renderCoursesPage(container) {
     container.innerHTML =
         `<div class="glass-card"><h2>📚 Our Premium Courses</h2><div class="courses-grid">${courses.map(c => `<div class="course-card glass-card"><i class="${c.icon} fa-3x"></i><h3>${c.name}</h3><p><strong>Teacher:</strong> ${c.teacher}</p><p>${c.description}</p><button class="nav-btn" onclick="alert('Enrollment open! Contact admin.')">Enroll Now</button></div>`).join('')}</div></div>
             <footer style="width:100%; margin-top:2rem; padding:1.5rem; background:rgba(5,18,30,0.95); text-align:center; border-top:2px solid var(--gold); border-radius:0;"><p>© Mubarak Smart Islamic Academy</p><p>Powered by Manu's Smart Web Developer</p></footer>`;
-    updateLiveJoinButton();
 }
 
 function renderTeachersPage(container) {
@@ -972,7 +1161,6 @@ function renderTeachersPage(container) {
     container.innerHTML =
         `<div class="glass-card"><h2><i class="fas fa-chalkboard-user"></i> Our Respected Teachers</h2><div class="teachers-grid">${teachers.map(t => `<div class="teacher-card glass-card"><img src="${t.imageData || t.imageUrl || 'https://via.placeholder.com/100'}" class="teacher-img" onerror="this.src='https://via.placeholder.com/100'"><h3>${t.name}</h3><p><strong>${t.title}</strong></p><p>${t.bio}</p></div>`).join('')}</div></div>
             <footer style="width:100%; margin-top:2rem; padding:1.5rem; background:rgba(5,18,30,0.95); text-align:center; border-top:2px solid var(--gold); border-radius:0;"><p>© Mubarak Smart Islamic Academy</p><p>Powered by Manu's Smart Web Developer</p></footer>`;
-    updateLiveJoinButton();
 }
 
 function editNextClass() {
@@ -988,7 +1176,7 @@ function editNextClass() {
 }
 
 // ================================================================
-// 12. SHOW PAGE
+// 12. SHOW PAGE (modified to call updateLiveJoinButton)
 // ================================================================
 function showPage(page) {
     if (page !== 'dashboard' && isDashboardMode) {
@@ -1006,16 +1194,19 @@ function showPage(page) {
     else if (page === 'dashboard' && isLoggedIn && isTeacher) renderAdminDashboard(container);
     else renderHomePage(container);
 
-    // Dashboard button is always visible for logged-in users
     if (isLoggedIn) {
         document.getElementById("logoutBtn").classList.remove("hidden");
-        document.getElementById("adminDashboardBtn").classList.remove("hidden"); // always visible
+        if (isTeacher) {
+            document.getElementById("adminDashboardBtn").classList.remove("hidden");
+        } else {
+            document.getElementById("adminDashboardBtn").classList.add("hidden");
+        }
     } else {
         document.getElementById("logoutBtn").classList.add("hidden");
         document.getElementById("adminDashboardBtn").classList.add("hidden");
     }
     updateNotificationBadge();
-    updateLiveJoinButton();
+    updateLiveJoinButton(); // Ensure join button visibility after navigation
 }
 
 function logout() {
@@ -1047,7 +1238,6 @@ function renderAdminDashboard(container) {
         `;
     showDashboardSidebar();
     updateSidebarActiveState('dashboard');
-    updateLiveJoinButton();
 }
 
 function switchDashboardSection(section) {
@@ -1066,7 +1256,6 @@ function switchDashboardSection(section) {
     else if (section === 'settings') contentDiv.innerHTML = renderSettingsPanel();
     updateSidebarActiveState(section);
     if (window.innerWidth <= 768) closeDashboardSidebar();
-    updateLiveJoinButton();
 }
 window.switchDashboardSection = switchDashboardSection;
 
@@ -1091,7 +1280,7 @@ function renderAttendancePanel() {
 }
 
 // ================================================================
-// 14. LIVE CLASS PANEL
+// 14. LIVE CLASS PANEL (MODIFIED: replaced Start button with startLiveWithOptions)
 // ================================================================
 function renderLiveClassPanel() {
     if (!requireAuth()) return '';
@@ -1105,8 +1294,8 @@ function renderLiveClassPanel() {
                     ${availableClasses.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
                 </select>
                 ${!isLive ? `
-                    <button onclick="startVoiceClass()" style="background:#2ecc71; color:#fff; padding:10px 24px; border-radius:30px; border:none; font-weight:600; cursor:pointer;">
-                        <i class="fas fa-play"></i> Start Live Class
+                    <button onclick="startLiveWithOptions()" style="background:#2ecc71; color:#fff; padding:10px 24px; border-radius:30px; border:none; font-weight:600; cursor:pointer;">
+                        <i class="fas fa-play"></i> Start Live (Video/Voice)
                     </button>
                 ` : `
                     <button onclick="window.stopLiveClass()" style="background:#e74c3c; color:#fff; padding:10px 24px; border-radius:30px; border:none; font-weight:600; cursor:pointer;">
@@ -1117,7 +1306,7 @@ function renderLiveClassPanel() {
 
             ${isLive ? `
                 <div style="margin-top:1rem; text-align:center;">
-                    <p><i class="fas fa-circle" style="color:#2ecc71;"></i> <strong>Live Now:</strong> ${activeLiveClass}</p>
+                    <p><i class="fas fa-circle" style="color:#2ecc71;"></i> <strong>Live Now:</strong> ${activeLiveClass} (${liveRoomType === 'voice' ? 'Voice Only' : 'Video'})</p>
                     <div style="display:flex; gap:0.8rem; margin-top:0.8rem; flex-wrap:wrap; justify-content:center;">
                         <button onclick="window.joinLiveClass('teacher')" style="background:var(--gold); color:#0a1620; padding:8px 20px; border-radius:30px; border:none; font-weight:600; cursor:pointer;">
                             <i class="fas fa-chalkboard-teacher"></i> Join as Teacher
@@ -1133,7 +1322,7 @@ function renderLiveClassPanel() {
             ` : `
                 <div style="background:rgba(0,0,0,0.3); border-radius:16px; padding:2rem; text-align:center; margin-top:0.5rem;">
                     <i class="fas fa-video" style="font-size:3rem; color:var(--gold); opacity:0.3;"></i>
-                    <p style="color:var(--gold-light); margin-top:1rem;">No active class. Select a class and click "Start Live Class" above.</p>
+                    <p style="color:var(--gold-light); margin-top:1rem;">No active class. Click "Start Live" above.</p>
                 </div>
             `}
         </div>
@@ -1141,14 +1330,13 @@ function renderLiveClassPanel() {
 }
 
 // ================================================================
-// 15. NOTIFICATIONS PANEL – STUDENTS CAN VIEW READ-ONLY
+// 15. NOTIFICATIONS PANEL – WITH READ STATUS
 // ================================================================
 function renderNotificationsPanel() {
     if (!requireAuth()) return '';
     markAllNotificationsRead();
 
-    let html = `<div class="glass-card"><h3>Notifications</h3>`;
-    // Only show "Add Announcement" button if user is teacher
+    let html = `<div class="glass-card"><h3>Manage Notifications</h3>`;
     if (isTeacher) {
         html += `<button onclick="addNotification()">+ Add Announcement</button>`;
     }
@@ -1227,7 +1415,7 @@ function renderSettingsPanel() {
 }
 
 // ================================================================
-// 18. CRUD OPERATIONS (unchanged)
+// 18. CRUD OPERATIONS
 // ================================================================
 window.toggleBlockStudent = function(id, source) {
     const student = students.find(s => s.id === id);
@@ -1367,7 +1555,7 @@ window.refreshData = function() {
 };
 
 // ================================================================
-// 20. DASHBOARD SECURITY LOGIN (ADMIN-ONLY)
+// 20. DASHBOARD SECURITY LOGIN (UPDATED)
 // ================================================================
 const securityLoginHTML = `
         <div id="dashboardSecurityLogin" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center;">
@@ -1417,12 +1605,10 @@ window.closeSecurityLogin = function() {
 };
 
 window.handleDashboardClick = function() {
-    // If already logged in as admin, go directly to dashboard
-    if (isLoggedIn && isTeacher) {
-        showPage('dashboard');
+    if (!isLoggedIn || !isTeacher) {
+        alert('Please login as Admin first');
         return;
     }
-    // Otherwise show the admin login popup
     document.getElementById('dashboardSecurityLogin').style.display = 'flex';
     document.getElementById('appContainer').style.display = 'none';
     document.getElementById('securityError').textContent = '';
@@ -1524,7 +1710,9 @@ setupWhatsAppButtons();
 fetchPrayerTimes();
 loadNotificationData();
 updateNotificationBadge();
-updateLiveJoinButton(); // ensure button state on load
+
+// Ensure join button state on load
+updateLiveJoinButton();
 
 console.log('✅ Mubarak Smart Islamic Academy loaded successfully!');
 console.log('🔐 Admin credentials: mubarak / ' + adminPassword);
@@ -1537,4 +1725,4 @@ console.log('📦 PWA ready.');
 console.log('👥 Live participants are now real-time and no fake students.');
 console.log('🔄 Jitsi error handling with reconnect and retry.');
 console.log('🔔 Notification badge implemented with PWA Badging API support.');
-console.log('🔴 Live join button appears in navbar when class is active.');
+console.log('🔴 Live join button appears when ?live=room-name is detected.');
