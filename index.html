@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
 
-    <!-- MOBILE FIX (IMPORTANT) -->
+    <!-- MOBILE FIX -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
     <title>Mubarak Smart Islamic Academy</title>
@@ -16,7 +16,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <!-- ICON (optional if no image) -->
+    <!-- ICON -->
     <link rel="icon" href="icon-192.png">
     <link rel="apple-touch-icon" href="icon-192.png">
 
@@ -31,19 +31,36 @@
 
     <!-- ===== MOBILE TEXT FIX ===== -->
     <style>
-        html {
-            -webkit-text-size-adjust: 100%;
-            text-size-adjust: 100%;
-        }
+        html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        input, button, textarea { font-size: 16px; }
 
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', sans-serif;
+        /* Install App Button - inlined to ensure visibility */
+        #installAppBtn {
+            display: none;
+            background: #2ecc71;
+            color: #0a1620;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: clamp(0.7rem, 0.9vw, 0.9rem);
+            white-space: nowrap;
+            flex-shrink: 0;
         }
+        #installAppBtn:hover {
+            background: #27ae60;
+            transform: scale(1.02);
+        }
+        #installAppBtn i { margin-right: 6px; }
 
-        input, button, textarea {
-            font-size: 16px; /* FIX MOBILE ZOOM ISSUE */
+        @media (max-width: 768px) {
+            #installAppBtn { font-size: 0.65rem; padding: 0.25rem 0.6rem; }
+            #installAppBtn span { display: none; }
+            #installAppBtn::before { content: "📲"; margin-right: 2px; }
+            #installAppBtn i { display: none; }
         }
     </style>
 </head>
@@ -78,17 +95,25 @@
         </div>
         <div class="nav-links">
             <button class="nav-btn" onclick="showPage('home')">Home</button>
-            <button class="nav-btn" onclick="showPage('courses')">Cours</button>
-            <button class="nav-btn" onclick="showPage('teachers')">Tcher</button>
-            <button class="nav-btn admin-dashboard-btn hidden" id="adminDashboardBtn" onclick="handleDashboardClick()">
-                <i class="fas fa-tachometer-alt"></i> Dash
+            <button class="nav-btn" onclick="showPage('courses')">Courses</button>
+            <button class="nav-btn" onclick="showPage('teachers')">Teachers</button>
+            <button class="nav-btn admin-dashboard-btn" id="adminDashboardBtn" onclick="handleDashboardClick()">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
             </button>
             <!-- Notification Bell -->
             <button class="nav-btn" id="notificationBell" onclick="toggleNotificationPanel()" style="position:relative;">
                 <i class="fas fa-bell"></i>
                 <span id="notificationBadge" style="position:absolute; top:-8px; right:-8px; background:red; color:white; border-radius:50%; padding:2px 6px; font-size:0.6rem; display:none;">0</span>
             </button>
-            <button class="nav-btn hidden" id="logoutBtn" onclick="logout()">Log.</button>
+            <!-- 🔴 LIVE JOIN BUTTON (appears when live is active) -->
+            <button class="nav-btn live-join-nav-btn" id="liveJoinNavBtn" onclick="window.joinLiveClass()" style="display:none;">
+                <i class="fas fa-video"></i> 🔴 JOIN LIVE
+            </button>
+            <!-- 📲 INSTALL APP BUTTON (appears when PWA install is supported) -->
+            <button id="installAppBtn" onclick="installApp()">
+                <i class="fas fa-download"></i> <span>Install App</span>
+            </button>
+            <button class="nav-btn" id="logoutBtn" onclick="logout()">Logout</button>
         </div>
     </div>
 
@@ -144,34 +169,78 @@
     <!-- ===== APP CONTAINER ===== -->
     <div id="appContainer" class="container"></div>
 
-    <!-- ===== WHATSAPP FLOAT ===== -->
+    <!-- ===== WHATSAPP FLOAT (now opens a modal) ===== -->
     <a href="#" id="whatsappFloatBtn" class="whatsapp-float" target="_blank">
         <i class="fab fa-whatsapp"></i>
     </a>
 
-    <!-- ===== JITSI LIVE ROOM OVERLAY ===== -->
-    <div id="jitsiOverlay">
-        <!-- Error/Reconnect overlay -->
-        <div id="jitsiConnectionStatus" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:10; background:rgba(0,0,0,0.8); padding:2rem; border-radius:16px; text-align:center; border:1px solid var(--gold);">
-            <i class="fas fa-exclamation-triangle" style="color:var(--gold); font-size:2rem; margin-bottom:1rem;"></i>
-            <p id="connectionMessage" style="color:#fff; margin-bottom:1rem;">Reconnecting...</p>
-            <button onclick="retryJitsiConnection()" style="background:var(--gold); color:#0a1620; padding:10px 24px; border-radius:30px; border:none; font-weight:600; cursor:pointer;">Retry</button>
-        </div>
-        <div class="live-room-wrapper">
-            <div class="video-container">
-                <div id="jitsiIframeContainer"></div>
-            </div>
-            <div class="participants-container">
-                <h3><i class="fas fa-users"></i> Participants</h3>
-                <div id="liveParticipantsContainer">
-                    <!-- Dynamically populated -->
+    <!-- ===== WHATSAPP MODAL ===== -->
+    <div id="whatsappModal" style="display:none;">
+        <div class="modal-overlay" onclick="closeWhatsAppModal()"></div>
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeWhatsAppModal()">&times;</span>
+            <h3><i class="fab fa-whatsapp" style="color:#25D366;"></i> Contact Us</h3>
+            <form id="whatsappForm" onsubmit="return false;">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="waFullName" placeholder="Enter your full name" required>
                 </div>
+                <div class="form-group">
+                    <label>Username *</label>
+                    <input type="text" id="waUsername" placeholder="Choose a username" required>
+                </div>
+                <div class="form-group">
+                    <label>Gmail / Email *</label>
+                    <input type="email" id="waEmail" placeholder="Enter your email address" required>
+                </div>
+                <div class="form-group">
+                    <label>Message *</label>
+                    <textarea id="waMessage" rows="4" placeholder="Write your message here..." required></textarea>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" onclick="sendWhatsAppMessage()" class="btn-send">
+                        <i class="fab fa-whatsapp"></i> Send on WhatsApp
+                    </button>
+                    <button type="button" onclick="closeWhatsAppModal()" class="btn-cancel">Cancel</button>
+                </div>
+                <div id="waError" style="color:#ff6b6b; margin-top:0.5rem; display:none;"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== LIVE CLASS PANEL (slides up from bottom) ===== -->
+    <div id="livePanel">
+        <div class="live-panel-header">
+            <span class="live-panel-title" id="livePanelTitle">📹 Live Class</span>
+            <div class="live-panel-actions">
+                <button id="minimizeLiveBtn" onclick="minimizeLiveClass()" title="Minimize">
+                    <i class="fas fa-window-minimize"></i>
+                </button>
+                <button id="closeLiveBtn" class="leave-btn" onclick="leaveLiveClass()">✕ Leave</button>
+                <button id="endClassBtn" class="end-btn" onclick="endLiveClass()" style="display:none;">⏹ End</button>
             </div>
         </div>
-        <div id="jitsiControls">
-            <span class="jitsi-room-label" id="jitsiRoomLabel">📹 Live Class</span>
-            <button class="leave-btn" onclick="window.leaveLiveClass()">✕ Leave Class</button>
-            <button id="jitsiEndClassBtn" class="end-btn" onclick="window.stopLiveClass()" style="display:none;">⏹ End Class</button>
+        <div class="live-panel-body">
+            <div id="jitsiIframeContainer"></div>
+            <div class="live-controls">
+                <button id="toggleMicBtn" onclick="toggleMic()"><i class="fas fa-microphone"></i> Mute</button>
+                <button id="toggleCamBtn" onclick="toggleCam()"><i class="fas fa-video"></i> Camera</button>
+                <button id="shareScreenBtn" onclick="shareScreen()"><i class="fas fa-desktop"></i> Share</button>
+            </div>
+        </div>
+        <div id="jitsiConnectionStatus" style="display:none; padding:1rem; text-align:center;">
+            <i class="fas fa-exclamation-triangle" style="color:var(--gold); font-size:1.5rem;"></i>
+            <p id="connectionMessage" style="color:#fff;">Reconnecting...</p>
+            <button onclick="retryJitsiConnection()" style="background:var(--gold); color:#0a1620; padding:8px 20px; border-radius:30px; border:none; font-weight:600; cursor:pointer;">Retry</button>
+        </div>
+    </div>
+
+    <!-- ===== MINI PLAYER (floating, draggable) ===== -->
+    <div id="miniPlayer" style="display:none;" onclick="restoreLiveClass()">
+        <div id="miniPlayerIframeContainer"></div>
+        <div class="mini-player-overlay">
+            <button id="miniLeaveBtn" onclick="event.stopPropagation(); leaveLiveClass();">✕</button>
+            <span class="mini-live-label">🔴 LIVE</span>
         </div>
     </div>
 

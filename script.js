@@ -1,88 +1,102 @@
 // ================================================================
-// 0. ENSURE BODY HAS 'pre-login' CLASS FROM THE START
-//    This hides the navbar immediately, preventing any flash.
+// 0. PRE-LOGIN
 // ================================================================
 document.body.classList.add('pre-login');
 
 // ================================================================
-// 1. SPLASH ANIMATION
+// 1. SPLASH ANIMATION (with safe error handling)
 // ================================================================
 (function runSplash() {
-    const splashScreen = document.getElementById('splashScreen');
-    const quranBook = document.getElementById('quranBook');
-    const titleEl = document.getElementById('splashTitle');
-    const arabicEl = document.getElementById('splashArabic');
-    const taglineEl = document.getElementById('splashTagline');
+    try {
+        const splashScreen = document.getElementById('splashScreen');
+        const quranBook = document.getElementById('quranBook');
+        const titleEl = document.getElementById('splashTitle');
+        const arabicEl = document.getElementById('splashArabic');
+        const taglineEl = document.getElementById('splashTagline');
 
-    const englishText = 'Mubarak Smart Islamic Academy';
-    const arabicWords = ['الأكاديمية', 'الإسلامية', 'للتميز', 'القرآني'];
+        const englishText = 'Mubarak Smart Islamic Academy';
+        const arabicWords = ['الأكاديمية', 'الإسلامية', 'للتميز', 'القرآني'];
 
-    setTimeout(() => {
-        quranBook.classList.remove('closed');
-        quranBook.classList.add('open');
-    }, 500);
-
-    let englishIndex = 0;
-    const englishChars = englishText.split('');
-
-    function typeEnglish() {
-        if (englishIndex < englishChars.length) {
-            const span = document.createElement('span');
-            span.className = 'letter';
-            span.textContent = englishChars[englishIndex];
-            titleEl.appendChild(span);
-            englishIndex++;
-            setTimeout(typeEnglish, 70);
-        } else {
-            titleEl.classList.add('visible');
-            setTimeout(typeArabic, 300);
-        }
-    }
-
-    let arabicIndex = 0;
-
-    function typeArabic() {
-        if (arabicIndex < arabicWords.length) {
-            const span = document.createElement('span');
-            span.className = 'word';
-            span.textContent = arabicWords[arabicIndex];
-            arabicEl.appendChild(span);
-            arabicIndex++;
-            setTimeout(typeArabic, 450);
-        } else {
-            arabicEl.classList.add('visible');
-            setTimeout(() => {
-                taglineEl.classList.add('visible');
-            }, 400);
-        }
-    }
-
-    setTimeout(typeEnglish, 1500);
-
-    const totalDuration = Math.max(
-        1500 + (englishChars.length * 70),
-        1500 + 300 + (arabicWords.length * 450)
-    ) + 400 + 1000;
-    const finalDuration = Math.max(totalDuration, 10000);
-
-    setTimeout(() => {
-        quranBook.classList.remove('open');
-        quranBook.classList.add('closed');
         setTimeout(() => {
-            splashScreen.classList.add('hidden');
+            quranBook.classList.remove('closed');
+            quranBook.classList.add('open');
+        }, 500);
+
+        let englishIndex = 0;
+        const englishChars = englishText.split('');
+
+        function typeEnglish() {
+            if (englishIndex < englishChars.length) {
+                const span = document.createElement('span');
+                span.className = 'letter';
+                span.textContent = englishChars[englishIndex];
+                titleEl.appendChild(span);
+                englishIndex++;
+                setTimeout(typeEnglish, 70);
+            } else {
+                titleEl.classList.add('visible');
+                setTimeout(typeArabic, 300);
+            }
+        }
+
+        let arabicIndex = 0;
+
+        function typeArabic() {
+            if (arabicIndex < arabicWords.length) {
+                const span = document.createElement('span');
+                span.className = 'word';
+                span.textContent = arabicWords[arabicIndex];
+                arabicEl.appendChild(span);
+                arabicIndex++;
+                setTimeout(typeArabic, 450);
+            } else {
+                arabicEl.classList.add('visible');
+                setTimeout(() => {
+                    taglineEl.classList.add('visible');
+                }, 400);
+            }
+        }
+
+        setTimeout(typeEnglish, 1500);
+
+        const totalDuration = Math.max(
+            1500 + (englishChars.length * 70),
+            1500 + 300 + (arabicWords.length * 450)
+        ) + 400 + 1000;
+        const finalDuration = Math.max(totalDuration, 10000);
+
+        setTimeout(() => {
+            quranBook.classList.remove('open');
+            quranBook.classList.add('closed');
             setTimeout(() => {
-                splashScreen.style.display = 'none';
-                renderUnifiedLoginPage(document.getElementById('appContainer'));
-                document.getElementById("logoutBtn").classList.add("hidden");
-                document.getElementById("adminDashboardBtn").classList.add("hidden");
-                updateNotificationBadge();
-            }, 1200);
-        }, 1800);
-    }, finalDuration);
+                splashScreen.classList.add('hidden');
+                setTimeout(() => {
+                    splashScreen.style.display = 'none';
+                    renderUnifiedLoginPage(document.getElementById('appContainer'));
+                    document.getElementById("logoutBtn").classList.add("hidden");
+                    document.getElementById("adminDashboardBtn").classList.remove("hidden");
+                    updateNotificationBadge();
+                    checkLiveClassFromURL();
+                }, 1200);
+            }, 1800);
+        }, finalDuration);
+    } catch (e) {
+        console.error('Splash error:', e);
+        const splash = document.getElementById('splashScreen');
+        if (splash) {
+            splash.classList.add('hidden');
+            splash.style.display = 'none';
+        }
+        renderUnifiedLoginPage(document.getElementById('appContainer'));
+        document.getElementById("logoutBtn").classList.add("hidden");
+        document.getElementById("adminDashboardBtn").classList.remove("hidden");
+        updateNotificationBadge();
+        checkLiveClassFromURL();
+    }
 })();
 
 // ================================================================
-// 2. JITSI MEET IMPLEMENTATION (MODIFIED: added voiceOnly parameter)
+// 2. JITSI MEET IMPLEMENTATION (vertical filmstrip)
 // ================================================================
 let isInLiveClass = false;
 let currentJitsiRoom = null;
@@ -101,7 +115,6 @@ function openJitsiMeeting(roomName, displayName, isHost, options = {}) {
     container.innerHTML = '';
     overlay.classList.add('active');
 
-    // Determine if voice-only mode
     const startWithVideoMuted = options.voiceOnly === true;
 
     try {
@@ -124,10 +137,10 @@ function openJitsiMeeting(roomName, displayName, isHost, options = {}) {
                 disableProfile: true,
                 hideLobbyButton: true,
                 requireDisplayName: false,
-                toolbarButtons: [
-                    'microphone', 'camera', 'desktop', 'fullscreen',
-                    'fodeviceselection', 'hangup', 'settings', 'videoquality', 'pip'
-                ]
+                toolbarButtons: [],
+                filmStripOnly: false,
+                disableTileView: false,
+                verticalFilmstrip: true,
             },
             interfaceConfigOverwrite: {
                 APP_NAME: 'Mubarak Academy',
@@ -135,15 +148,21 @@ function openJitsiMeeting(roomName, displayName, isHost, options = {}) {
                 SHOW_BRAND_WATERMARK: false,
                 SHOW_POWERED_BY: false,
                 SHOW_DEEP_LINKING_IMAGE: false,
-                TOOLBAR_ALWAYS_VISIBLE: true,
+                TOOLBAR_ALWAYS_VISIBLE: false,
                 MOBILE_APP_PROMO: false,
                 NATIVE_APP_NAME: 'Mubarak Academy',
                 DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
                 HIDE_INVITE_MORE_HEADER: true,
                 FILM_STRIP_MAX_HEIGHT: 0,
-                VERTICAL_FILMSTRIP: false,
+                VERTICAL_FILMSTRIP: true,
                 SHOW_CHROME_EXTENSION_BANNER: false,
-                HIDE_DEEP_LINKING_LOGO: true
+                HIDE_DEEP_LINKING_LOGO: true,
+                SHOW_FILM_STRIP: true,
+                TOOLBAR_BUTTONS: [
+                    "microphone", "camera", "desktop",
+                    "chat", "raisehand", "participants-pane",
+                    "tileview", "hangup"
+                ]
             }
         };
         jitsiApiInstance = new JitsiMeetExternalAPI(domain, optionsConfig);
@@ -153,7 +172,6 @@ function openJitsiMeeting(roomName, displayName, isHost, options = {}) {
         isInLiveClass = true;
         currentJitsiRoom = sanitizedRoom;
         liveParticipants = [];
-
         statusEl.style.display = 'none';
 
         jitsiApiInstance.addListener('videoConferenceJoined', (data) => {
@@ -282,65 +300,65 @@ function retryJitsiConnection() {
 window.retryJitsiConnection = retryJitsiConnection;
 
 // ================================================================
-// MEDIA PERMISSIONS
+// FIX 1: requestMediaPermission() with detailed error handling
 // ================================================================
-function requestMediaPermissions() {
-    return new Promise((resolve, reject) => {
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then(stream => { stream.getTracks().forEach(track => track.stop());
-                resolve(true); })
-            .catch(err => showPermissionModal(resolve, reject));
-    });
-}
+async function requestMediaPermission(callType) {
+    try {
+        const constraints = {
+            audio: true,
+            video: callType === 'video'
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        stream.getTracks().forEach(t => t.stop());
+        return true;
+    } catch(error) {
+        console.error('Media permission error:', error.name, error.message);
 
-function showPermissionModal(resolve, reject) {
-    const existing = document.querySelector('.permission-modal');
-    if (existing) existing.remove();
-    const modal = document.createElement('div');
-    modal.className = 'permission-modal';
-    modal.innerHTML = `
-            <div class="modal-content">
-                <i class="fas fa-video" style="font-size:3rem; color:var(--gold); margin-bottom:1rem;"></i>
-                <h3>Camera & Microphone Required</h3>
-                <p>Camera and Microphone access are required to join this live class.</p>
-                <button class="permission-btn allow" onclick="grantMediaPermissions()">
-                    <i class="fas fa-camera"></i> Allow Camera & Microphone
-                </button>
-                <button class="permission-btn retry" onclick="retryPermissions()">
-                    <i class="fas fa-redo"></i> Retry
-                </button>
-            </div>
+        const existingMsg = document.getElementById('mediaPermissionToast');
+        if (existingMsg) existingMsg.remove();
+
+        let instructions = '';
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            instructions = `
+                You blocked Camera & Microphone.<br><br>
+                <small>
+                <strong>Chrome:</strong> Tap 🔒 in address bar → Site settings → Allow Camera & Mic<br><br>
+                <strong>Android:</strong> Settings → Apps → Chrome → Permissions → Allow<br><br>
+                <strong>iPhone:</strong> Settings → Safari → Camera & Microphone → Allow
+                </small>
+            `;
+        } else if (error.name === 'NotFoundError') {
+            instructions = `<small>No camera or microphone found on this device.</small>`;
+        } else if (error.name === 'NotReadableError') {
+            instructions = `<small>Camera or microphone is being used by another app. Close other apps and try again.</small>`;
+        } else {
+            instructions = `<small>Could not access camera/microphone. Please check your browser settings.</small>`;
+        }
+
+        const msg = document.createElement('div');
+        msg.id = 'mediaPermissionToast';
+        msg.style.cssText = `
+            position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+            background:#c0392b; color:#fff; padding:1.2rem 1.5rem;
+            border-radius:16px; z-index:99999; text-align:center;
+            max-width:360px; width:90%; font-size:0.88rem;
+            box-shadow:0 8px 30px rgba(0,0,0,0.5);
+            line-height:1.6;
         `;
-    document.body.appendChild(modal);
-    window._permissionResolve = resolve;
-    window._permissionReject = reject;
-}
-
-window.grantMediaPermissions = function() {
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-        .then(stream => {
-            stream.getTracks().forEach(track => track.stop());
-            document.querySelector('.permission-modal')?.remove();
-            if (window._permissionResolve) window._permissionResolve(true);
-        })
-        .catch(err => {
-            const modal = document.querySelector('.permission-modal');
-            if (modal) {
-                modal.querySelector('p').textContent = '❌ Access denied. Please allow camera and microphone access and try again.';
-                modal.querySelector('p').style.color = '#ff6b6b';
-            }
-            if (window._permissionReject) window._permissionReject(err);
-        });
-};
-
-window.retryPermissions = function() {
-    const modal = document.querySelector('.permission-modal');
-    if (modal) {
-        modal.querySelector('p').textContent = '🔄 Retrying... Please allow camera and microphone access.';
-        modal.querySelector('p').style.color = 'var(--gold-light)';
+        msg.innerHTML = `
+            📷 <strong>Camera & Mic access denied</strong><br><br>
+            ${instructions}
+            <br><br>
+            <button onclick="this.parentElement.remove()"
+            style="background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.5);
+            color:#fff; padding:6px 24px; border-radius:8px; cursor:pointer; font-size:0.85rem;">
+            Got it</button>
+        `;
+        document.body.appendChild(msg);
+        setTimeout(() => { if (msg && msg.parentElement) msg.remove(); }, 12000);
+        throw error;
     }
-    requestMediaPermissions().then(window._permissionResolve).catch(window._permissionReject);
-};
+}
 
 // ================================================================
 // 3. GLOBAL STATE
@@ -359,6 +377,9 @@ let isDashboardMode = false;
 let isSidebarOpen = false;
 let readNotificationIds = [];
 
+// FIX 7: Add currentPage variable for fetchPrayerTimes()
+let currentPage = 'home';
+
 let prayerTimesNigeria = { Fajr: "--:--", Zuhr: "--:--", Asr: "--:--", Maghrib: "--:--", Isha: "--:--" };
 let prayerTimesEgypt = { Fajr: "--:--", Zuhr: "--:--", Asr: "--:--", Maghrib: "--:--", Isha: "--:--" };
 
@@ -376,23 +397,16 @@ const availableClasses = [
 ];
 
 let courses = [
-    { name: "Tajweed Al-Quran", teacher: "Malam Mubarak", icon: "fas fa-quran",
-    description: "Master the art of Quranic recitation" },
-    { name: "Hifz Program", teacher: "Malam Mubarak", icon: "fas fa-book",
-    description: "Complete Quran memorization" },
-    { name: "Islamic Studies", teacher: "Malam Mubarak", icon: "fas fa-mosque",
-    description: "Comprehensive Islamic education" },
-    { name: "Arabic Language", teacher: "Malam Mubarak", icon: "fas fa-language",
-    description: "Learn Quranic Arabic" }
+    { name: "Tajweed Al-Quran", teacher: "Malam Mubarak", icon: "fas fa-quran", description: "Master the art of Quranic recitation" },
+    { name: "Hifz Program", teacher: "Malam Mubarak", icon: "fas fa-book", description: "Complete Quran memorization" },
+    { name: "Islamic Studies", teacher: "Malam Mubarak", icon: "fas fa-mosque", description: "Comprehensive Islamic education" },
+    { name: "Arabic Language", teacher: "Malam Mubarak", icon: "fas fa-language", description: "Learn Quranic Arabic" }
 ];
 
 let teachers = [
-    { id: 1, name: "Malam Mubarak", title: "Qira'at Expert", bio: "15+ years teaching experience",
-        imageData: null, imageUrl: "https://randomuser.me/api/portraits/men/32.jpg" },
-    { id: 2, name: "Sheikh Abdullah", title: "Tajweed Specialist", bio: "Certified Tajweed instructor",
-        imageData: null, imageUrl: "https://randomuser.me/api/portraits/men/45.jpg" },
-    { id: 3, name: "Ustadh Fatima", title: "Hadith Sciences", bio: "PhD in Islamic Studies", imageData: null,
-        imageUrl: "https://randomuser.me/api/portraits/women/68.jpg" }
+    { id: 1, name: "Malam Mubarak", title: "Qira'at Expert", bio: "15+ years teaching experience", imageData: null, imageUrl: "https://randomuser.me/api/portraits/men/32.jpg" },
+    { id: 2, name: "Sheikh Abdullah", title: "Tajweed Specialist", bio: "Certified Tajweed instructor", imageData: null, imageUrl: "https://randomuser.me/api/portraits/men/45.jpg" },
+    { id: 3, name: "Ustadh Fatima", title: "Hadith Sciences", bio: "PhD in Islamic Studies", imageData: null, imageUrl: "https://randomuser.me/api/portraits/women/68.jpg" }
 ];
 
 // ================================================================
@@ -426,25 +440,17 @@ function updateNotificationBadge() {
     if (unread > 0) {
         badge.textContent = unread;
         badge.style.display = 'block';
+        if (navigator.setAppBadge) navigator.setAppBadge(unread).catch(()=>{});
     } else {
         badge.style.display = 'none';
+        if (navigator.clearAppBadge) navigator.clearAppBadge().catch(()=>{});
     }
     const notifCount = document.getElementById('notifCount');
     if (notifCount) notifCount.textContent = unread;
-
-    if (navigator.setAppBadge) {
-        navigator.setAppBadge(unread).catch(() => {});
-    } else if (navigator.clearAppBadge) {
-        navigator.clearAppBadge().catch(() => {});
-    }
 }
 
 function markAllNotificationsRead() {
-    notifications.forEach(n => {
-        if (!readNotificationIds.includes(n.id)) {
-            readNotificationIds.push(n.id);
-        }
-    });
+    notifications.forEach(n => { if (!readNotificationIds.includes(n.id)) readNotificationIds.push(n.id); });
     saveNotificationData();
     updateNotificationBadge();
 }
@@ -512,12 +518,11 @@ function requireAuth() {
 // ================================================================
 function showDashboardSidebar() {
     const sidebar = document.getElementById('dashboardSidebar');
-    if (sidebar) {
-        sidebar.style.display = 'flex';
-        sidebar.classList.add('visible');
-        if (window.innerWidth <= 768) {
-            sidebar.classList.remove('open');
-        }
+    if (!sidebar) return;
+    sidebar.style.display = 'flex';
+    sidebar.classList.add('visible');
+    if (window.innerWidth <= 768) {
+        sidebar.classList.remove('open');
     }
     isDashboardMode = true;
     document.getElementById('appContainer').classList.add('dashboard-mode');
@@ -581,7 +586,8 @@ function updateSidebarBadges() {
     const liveBadge = document.getElementById('liveStatusBadge');
     if (studentBadge) studentBadge.textContent = students ? students.length : 0;
     if (teacherBadge) teacherBadge.textContent = teachers ? teachers.length : 0;
-    if (notifBadge) notifBadge.textContent = notifications ? notifications.length : 0;
+    const unreadCount = notifications.filter(n => !readNotificationIds.includes(n.id)).length;
+    if (notifBadge) notifBadge.textContent = unreadCount;
     if (liveBadge) liveBadge.style.display = activeLiveClass ? 'inline-block' : 'none';
     updateNotificationBadge();
 }
@@ -592,7 +598,7 @@ function updateSidebarActiveState(section) {
 }
 
 // ================================================================
-// 7. DATA LOAD / SAVE (MODIFIED: added checkLiveClassFromURL & updateLiveJoinButton)
+// 7. DATA LOAD / SAVE
 // ================================================================
 function loadData() {
     const stored = localStorage.getItem("mubarak_academy_data");
@@ -607,23 +613,16 @@ function loadData() {
     }
     if (students.length === 0) {
         students = [
-            { id: 1, name: "Muhammad Al-Fatih", payment: "Paid", attendance: "Present",
-                email: "muhammad@example.com", username: "muhammad", gmail: "muhammad@gmail.com",
-                regDate: new Date().toISOString().split('T')[0], blocked: false },
-            { id: 2, name: "Aisha Bint Ahmad", payment: "Paid", attendance: "Absent",
-                email: "aisha@example.com", username: "aisha", gmail: "aisha@gmail.com",
-                regDate: new Date().toISOString().split('T')[0], blocked: false },
-            { id: 3, name: "Omar Ibn Said", payment: "Pending", attendance: "Absent",
-                email: "omar@example.com", username: "omar", gmail: "omar@gmail.com",
-                regDate: new Date().toISOString().split('T')[0], blocked: false }
+            { id: 1, name: "Muhammad Al-Fatih", payment: "Paid", attendance: "Present", email: "muhammad@example.com", username: "muhammad", gmail: "muhammad@gmail.com", regDate: new Date().toISOString().split('T')[0], blocked: false },
+            { id: 2, name: "Aisha Bint Ahmad", payment: "Paid", attendance: "Absent", email: "aisha@example.com", username: "aisha", gmail: "aisha@gmail.com", regDate: new Date().toISOString().split('T')[0], blocked: false },
+            { id: 3, name: "Omar Ibn Said", payment: "Pending", attendance: "Absent", email: "omar@example.com", username: "omar", gmail: "omar@gmail.com", regDate: new Date().toISOString().split('T')[0], blocked: false }
         ];
         saveData();
     }
     students.forEach(s => { if (!s.gmail) s.gmail = s.email; if (s.blocked === undefined) s.blocked = false; });
 
     if (notifications.length === 0) {
-        notifications = [{ id: 1, text: "Welcome to Mubarak Academy! Check out our live classes.",
-            date: new Date().toLocaleString(), readBy: [] }];
+        notifications = [{ id: 1, text: "Welcome to Mubarak Academy! Check out our live classes.", date: new Date().toLocaleString(), readBy: [] }];
         saveData();
     }
     notifications.forEach(n => { if (!n.readBy) n.readBy = []; });
@@ -644,10 +643,7 @@ function loadData() {
     const savedRoomType = localStorage.getItem("liveRoomType");
     if (savedRoomType) liveRoomType = savedRoomType;
 
-    // NEW: Check URL for live session (student detection)
     checkLiveClassFromURL();
-
-    // NEW: Update navbar join button visibility
     updateLiveJoinButton();
 }
 
@@ -673,7 +669,6 @@ function renderUnifiedLoginPage(container) {
                     <h2 style="margin-top:0.5rem;">Welcome to Mubarak Academy</h2>
                     <p style="color:var(--gold-light); margin-bottom:1rem;">Please login to continue</p>
                     <div class="login-tabs">
-                        <!-- ADMIN TAB IS NOW ACTIVE BY DEFAULT -->
                         <div class="login-tab" data-tab="student" onclick="switchLoginTab('student')">Student Login</div>
                         <div class="login-tab active" data-tab="admin" onclick="switchLoginTab('admin')">Admin Login</div>
                     </div>
@@ -711,7 +706,7 @@ function ultraTrim(str) {
     return str.replace(/[\s\u200B-\u200D\uFEFF]/g, '').trim();
 }
 
-// --- Admin Login (FIXED: fallback + default tab) ---
+// --- Admin Login (FIXED: fallback + default tab + FIX B: call fetchPrayerTimes) ---
 window.handleAdminLoginUnified = function() {
     const user = document.getElementById("adminUsernameLogin")?.value;
     const pass = document.getElementById("adminPasswordLogin")?.value;
@@ -723,17 +718,10 @@ window.handleAdminLoginUnified = function() {
     const cleanUser = ultraTrim(user).toLowerCase();
     const cleanPass = ultraTrim(pass);
 
-    // Accept both 'mubarak' and 'admin' as username
     const validUsers = ["mubarak", "admin"];
-
-    // FALLBACK: always accept "0708070" as a valid password,
-    // even if the stored password is different.
-    // This ensures users can always log in on any device.
     const isValidPass = (cleanPass === adminPassword) || (cleanPass === "0708070");
 
     if (validUsers.includes(cleanUser) && isValidPass) {
-        // If the user used the default password, reset the stored password
-        // so that future logins work without the fallback.
         if (cleanPass === "0708070" && adminPassword !== "0708070") {
             adminPassword = "0708070";
             localStorage.setItem("admin_password", adminPassword);
@@ -749,12 +737,14 @@ window.handleAdminLoginUnified = function() {
         loadNotificationData();
         updateNotificationBadge();
         showPage('home');
+        // FIX B: Call fetchPrayerTimes after login
+        fetchPrayerTimes();
     } else {
         alert("Sorry, login failed. Please check your credentials and try again.");
     }
 };
 
-// --- Student Login (unchanged) ---
+// --- Student Login (FIX 5: case-insensitive comparison + FIX B: call fetchPrayerTimes) ---
 window.handleStudentLogin = function() {
     const username = document.getElementById("studentUsernameLogin")?.value.trim();
     const gmail = document.getElementById("studentGmailLogin")?.value.trim();
@@ -764,7 +754,12 @@ window.handleStudentLogin = function() {
     }
     const cleanUser = ultraTrim(username);
     const cleanGmail = ultraTrim(gmail);
-    const found = students.find(s => (s.username === cleanUser || s.email === cleanUser) && (s.gmail === cleanGmail || s.email === cleanGmail));
+    const found = students.find(s =>
+        (s.username?.toLowerCase() === cleanUser.toLowerCase() ||
+         s.email?.toLowerCase() === cleanUser.toLowerCase()) &&
+        (s.gmail?.toLowerCase() === cleanGmail.toLowerCase() ||
+         s.email?.toLowerCase() === cleanGmail.toLowerCase())
+    );
     if (!found) {
         alert("Sorry, login failed. Please check your credentials and try again.");
         return;
@@ -783,18 +778,74 @@ window.handleStudentLogin = function() {
     loadNotificationData();
     updateNotificationBadge();
     showPage('home');
+    // FIX B: Call fetchPrayerTimes after login
+    fetchPrayerTimes();
 };
 
 // ================================================================
-// 9. WHATSAPP & PRAYER TIMES
+// 9. WHATSAPP & PRAYER TIMES – MODIFIED to open modal
 // ================================================================
 function setupWhatsAppButtons() {
     const floatBtn = document.getElementById("whatsappFloatBtn");
-    const handler = (e) => { e.preventDefault();
-        window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, "_blank"); };
-    if (floatBtn) floatBtn.addEventListener("click", handler);
+    floatBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        openWhatsAppModal();
+    });
 }
 
+// WhatsApp Modal Functions
+function openWhatsAppModal() {
+    document.getElementById('whatsappModal').style.display = 'flex';
+    document.getElementById('waError').style.display = 'none';
+    document.getElementById('waFullName').value = '';
+    document.getElementById('waUsername').value = '';
+    document.getElementById('waEmail').value = '';
+    document.getElementById('waMessage').value = '';
+}
+window.openWhatsAppModal = openWhatsAppModal;
+
+function closeWhatsAppModal() {
+    document.getElementById('whatsappModal').style.display = 'none';
+}
+window.closeWhatsAppModal = closeWhatsAppModal;
+
+function sendWhatsAppMessage() {
+    const name = document.getElementById('waFullName').value.trim();
+    const username = document.getElementById('waUsername').value.trim();
+    const email = document.getElementById('waEmail').value.trim();
+    const message = document.getElementById('waMessage').value.trim();
+    const errorEl = document.getElementById('waError');
+
+    if (!name || !username || !email || !message) {
+        errorEl.textContent = '⚠️ All fields are required.';
+        errorEl.style.display = 'block';
+        return;
+    }
+    if (!email.includes('@') || !email.includes('.')) {
+        errorEl.textContent = '⚠️ Please enter a valid email address.';
+        errorEl.style.display = 'block';
+        return;
+    }
+    errorEl.style.display = 'none';
+
+    const waMessage =
+`Hello,
+
+Full Name: ${name}
+Username: ${username}
+Email: ${email}
+Message: ${message}
+
+Sent from MLM-MBRK website.`;
+
+    const encoded = encodeURIComponent(waMessage);
+    const url = `https://wa.me/${whatsappNumber}?text=${encoded}`;
+    window.open(url, '_blank');
+    closeWhatsAppModal();
+}
+window.sendWhatsAppMessage = sendWhatsAppMessage;
+
+// FIX A: fetchPrayerTimes() now updates prayer time elements without re-rendering the whole page
 async function fetchPrayerTimes() {
     try {
         const [nigeriaRes, egyptRes] = await Promise.all([
@@ -803,35 +854,44 @@ async function fetchPrayerTimes() {
         ]);
         const nigeriaData = await nigeriaRes.json();
         const egyptData = await egyptRes.json();
-        if (nigeriaData.code === 200) prayerTimesNigeria = { Fajr: nigeriaData.data.timings.Fajr, Zuhr: nigeriaData
-                .data.timings.Dhuhr, Asr: nigeriaData.data.timings.Asr, Maghrib: nigeriaData.data.timings
-                .Maghrib, Isha: nigeriaData.data.timings.Isha };
-        if (egyptData.code === 200) prayerTimesEgypt = { Fajr: egyptData.data.timings.Fajr, Zuhr: egyptData.data
-                .timings.Dhuhr, Asr: egyptData.data.timings.Asr, Maghrib: egyptData.data.timings.Maghrib,
-            Isha: egyptData.data.timings.Isha };
-        if (document.getElementById("appContainer").innerHTML.includes("Welcome")) renderHomePage(document
-            .getElementById("appContainer"));
+        if (nigeriaData.code === 200) prayerTimesNigeria = { Fajr: nigeriaData.data.timings.Fajr, Zuhr: nigeriaData.data.timings.Dhuhr, Asr: nigeriaData.data.timings.Asr, Maghrib: nigeriaData.data.timings.Maghrib, Isha: nigeriaData.data.timings.Isha };
+        if (egyptData.code === 200) prayerTimesEgypt = { Fajr: egyptData.data.timings.Fajr, Zuhr: egyptData.data.timings.Dhuhr, Asr: egyptData.data.timings.Asr, Maghrib: egyptData.data.timings.Maghrib, Isha: egyptData.data.timings.Isha };
+        // FIX A: Only update the prayer time elements, don't re-render the whole page
+        if (currentPage === 'home') {
+            const nigeriaRows = document.querySelectorAll('.prayer-country-card:first-child .prayer-row');
+            const egyptRows = document.querySelectorAll('.prayer-country-card:last-child .prayer-row');
+            const nigeriaTimes = Object.values(prayerTimesNigeria);
+            const egyptTimes = Object.values(prayerTimesEgypt);
+            if (nigeriaRows.length > 0 && egyptRows.length > 0) {
+                nigeriaRows.forEach((row, i) => {
+                    const timeEl = row.querySelector('.prayer-time');
+                    if (timeEl && nigeriaTimes[i]) timeEl.textContent = nigeriaTimes[i];
+                });
+                egyptRows.forEach((row, i) => {
+                    const timeEl = row.querySelector('.prayer-time');
+                    if (timeEl && egyptTimes[i]) timeEl.textContent = egyptTimes[i];
+                });
+            } else {
+                renderHomePage(document.getElementById('appContainer'));
+            }
+        }
     } catch (error) { console.error(error); }
 }
 
 // ================================================================
-// 10. JITSI LIVE CLASS FUNCTIONS (modified to use new room with voiceOnly)
+// 10. JITSI LIVE CLASS FUNCTIONS (UPDATED with permission flow)
 // ================================================================
 
-// NEW: Generate a unique room name
 function generateRoomName() {
     return 'mlm-live-' + Date.now();
 }
 
-// NEW: Generate the full shareable link using the fixed GitHub Pages base URL
 function generateLiveLink(roomName, type) {
     const BASE_APP_URL = "https://umarmsanicodes.github.io/MLM-MBRK/";
     return `${BASE_APP_URL}?live=${encodeURIComponent(roomName)}&type=${encodeURIComponent(type)}`;
 }
 
-// NEW: Show the live link box in the dashboard
 function showLiveLinkBox(roomName, type) {
-    // Remove any existing box
     const existingBox = document.getElementById('liveLinkBox');
     if (existingBox) existingBox.remove();
 
@@ -874,7 +934,6 @@ function showLiveLinkBox(roomName, type) {
             </div>
         </div>
     `;
-    // Insert the box into the dashboard content
     const dashboardContent = document.getElementById('dashboardSectionContent');
     if (dashboardContent) {
         dashboardContent.prepend(box);
@@ -882,12 +941,10 @@ function showLiveLinkBox(roomName, type) {
         document.getElementById('appContainer').prepend(box);
     }
 
-    // Store room name and type for later use
     window._pendingRoom = roomName;
     window._pendingType = type;
 }
 
-// NEW: Copy the live link
 function copyLiveLink() {
     const input = document.getElementById('liveLinkInput');
     if (!input) return;
@@ -903,7 +960,6 @@ function copyLiveLink() {
     }
 }
 
-// NEW: Share on WhatsApp
 function shareOnWhatsApp() {
     const input = document.getElementById('liveLinkInput');
     if (!input) return;
@@ -912,7 +968,6 @@ function shareOnWhatsApp() {
     window.open('https://wa.me/?text=' + message, '_blank');
 }
 
-// NEW: Start the live session (called when admin clicks "Start Live")
 function startLiveSession() {
     const room = window._pendingRoom;
     const type = window._pendingType;
@@ -920,14 +975,11 @@ function startLiveSession() {
         alert('Please select a class type first.');
         return;
     }
-    // Remove the link box
     document.getElementById('liveLinkBox')?.remove();
-    // Start the class with the chosen type
     const voiceOnly = (type === 'voice');
     startJitsiClassWithRoom(room, voiceOnly);
 }
 
-// NEW: Start Jitsi class with a given room name and voiceOnly flag
 function startJitsiClassWithRoom(roomName, voiceOnly = false) {
     if (!isLoggedIn || !isTeacher) {
         alert("Only Admin can start live class.");
@@ -938,30 +990,31 @@ function startJitsiClassWithRoom(roomName, voiceOnly = false) {
             return;
         window.stopLiveClass();
     }
-    activeLiveClass = roomName;
-    liveRoomType = voiceOnly ? 'voice' : 'video';
-    localStorage.setItem("activeLiveClass", roomName);
-    localStorage.setItem("liveRoomType", liveRoomType);
 
-    // Update URL to include live parameters (so that if admin shares the current URL, it works)
-    const url = new URL(window.location);
-    url.searchParams.set('live', roomName);
-    url.searchParams.set('type', liveRoomType);
-    window.history.replaceState({}, '', url);
+    const callType = voiceOnly ? 'voice' : 'video';
 
-    requestMediaPermissions().then(() => {
-        // Use the room name directly (already sanitized)
-        openJitsiMeeting(roomName, 'Teacher', true, { voiceOnly });
-        enterLiveMode();
-    }).catch(() => {
-        alert("Camera and Microphone access are required to start the live class.");
-    });
+    requestMediaPermission(callType)
+        .then(() => {
+            activeLiveClass = roomName;
+            liveRoomType = voiceOnly ? 'voice' : 'video';
+            localStorage.setItem("activeLiveClass", roomName);
+            localStorage.setItem("activeLiveClassTime", Date.now().toString());
+            localStorage.setItem("liveRoomType", liveRoomType);
 
-    updateSidebarBadges();
-    updateLiveJoinButton();
+            const url = new URL(window.location);
+            url.searchParams.set('live', roomName);
+            url.searchParams.set('type', liveRoomType);
+            window.history.replaceState({}, '', url);
+
+            openJitsiMeeting(roomName, 'Teacher', true, { voiceOnly });
+            enterLiveMode();
+
+            updateSidebarBadges();
+            updateLiveJoinButton();
+        })
+        .catch(() => {});
 }
 
-// Keep the original startJitsiClass for backward compatibility (now it generates a new room)
 function startJitsiClass(className) {
     const roomName = generateRoomName();
     startJitsiClassWithRoom(roomName, false);
@@ -973,13 +1026,11 @@ window.startVoiceClass = function() {
     startJitsiClass(selected);
 };
 
-// NEW: Video/Voice selection modal
 function startLiveWithOptions() {
     if (!isLoggedIn || !isTeacher) {
         alert("Only Admin can start live class.");
         return;
     }
-    // Show modal with Video/Voice choice
     const modal = document.createElement('div');
     modal.className = 'live-choice-modal';
     modal.style.cssText = `
@@ -1005,36 +1056,40 @@ function startLiveWithOptions() {
 }
 
 function handleTypeSelection(type) {
-    // Remove the modal
     document.querySelector('.live-choice-modal')?.remove();
-    // Generate a room name
     const roomName = generateRoomName();
-    // Show the link box
     showLiveLinkBox(roomName, type);
 }
 
-// NEW: Student detection from URL parameters
 function checkLiveClassFromURL() {
+    const savedTime = localStorage.getItem("activeLiveClassTime");
+    const age = Date.now() - parseInt(savedTime || 0);
+    if (age > 6 * 60 * 60 * 1000) {
+        localStorage.removeItem("activeLiveClass");
+        localStorage.removeItem("activeLiveClassTime");
+        localStorage.removeItem("liveRoomType");
+        activeLiveClass = null;
+        liveRoomType = null;
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const live = urlParams.get('live');
     const type = urlParams.get('type') || 'video';
     if (live) {
         const roomName = decodeURIComponent(live);
-        // If no active class is set, set it from the URL
         if (!activeLiveClass) {
             activeLiveClass = roomName;
             liveRoomType = type;
             localStorage.setItem('activeLiveClass', roomName);
+            localStorage.setItem('activeLiveClassTime', Date.now().toString());
             localStorage.setItem('liveRoomType', type);
-            // Update the navbar join button
             updateLiveJoinButton();
             updateSidebarBadges();
         }
-        // Keep URL parameters (they are needed for sharing)
     }
 }
 
-// Modified stopLiveClass to remove URL parameters
+// FIX D: Reset activeLiveClassTime in stopLiveClass()
 window.stopLiveClass = function() {
     if (!isTeacher) {
         alert("Only Admin can end live class.");
@@ -1047,8 +1102,9 @@ window.stopLiveClass = function() {
     activeLiveClass = null;
     liveRoomType = null;
     localStorage.removeItem("activeLiveClass");
+    // FIX D: Remove activeLiveClassTime
+    localStorage.removeItem("activeLiveClassTime");
     localStorage.removeItem("liveRoomType");
-    // Remove URL parameters
     const url = new URL(window.location);
     url.searchParams.delete('live');
     url.searchParams.delete('type');
@@ -1063,13 +1119,14 @@ window.stopLiveClass = function() {
     showPage('home');
 };
 
-// Modified joinLiveClass to use the liveRoomType
+// UPDATED: joinLiveClass with permission flow
 window.joinLiveClass = function(role) {
     if (!activeLiveClass) {
         alert("No live class active. Admin must start a class first.");
         return;
     }
     if (isInLiveClass) return;
+
     let displayName = "Student";
     let isHost = false;
     if (role === 'teacher' || isTeacher) {
@@ -1079,14 +1136,17 @@ window.joinLiveClass = function(role) {
         displayName = currentStudent?.name || "Student";
         isHost = false;
     }
+
     const roomName = activeLiveClass;
     const voiceOnly = (liveRoomType === 'voice');
-    requestMediaPermissions().then(() => {
-        openJitsiMeeting(roomName, displayName, isHost, { voiceOnly });
-        enterLiveMode();
-    }).catch(() => {
-        alert("Camera and Microphone access are required to join the live class.");
-    });
+    const callType = voiceOnly ? 'voice' : 'video';
+
+    requestMediaPermission(callType)
+        .then(() => {
+            openJitsiMeeting(roomName, displayName, isHost, { voiceOnly });
+            enterLiveMode();
+        })
+        .catch(() => {});
 };
 
 window.leaveLiveClass = function() {
@@ -1108,6 +1168,20 @@ function enterLiveMode() {
 function exitLiveMode() {
     document.body.classList.remove('live-mode');
 }
+
+function updateLiveJoinButton() {
+    const btn = document.getElementById('liveJoinNavBtn');
+    if (btn) {
+        if (activeLiveClass) {
+            btn.style.display = 'inline-flex';
+            btn.style.animation = 'pulse 1.5s infinite';
+        } else {
+            btn.style.display = 'none';
+            btn.style.animation = 'none';
+        }
+    }
+}
+window.updateLiveJoinButton = updateLiveJoinButton;
 
 // ================================================================
 // 11. PAGE RENDER FUNCTIONS
@@ -1143,8 +1217,7 @@ function renderHomePage(container) {
     const homeJoinBtn = document.getElementById("homeJoinLiveBtn");
     if (homeJoinBtn) homeJoinBtn.onclick = () => window.joinLiveClass();
     const bottomWhatsApp = document.getElementById("whatsappBottomBtn");
-    if (bottomWhatsApp) bottomWhatsApp.addEventListener("click", (e) => { e.preventDefault();
-        window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, "_blank"); });
+    if (bottomWhatsApp) bottomWhatsApp.addEventListener("click", (e) => { e.preventDefault(); window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, "_blank"); });
 }
 
 function renderCoursesPage(container) {
@@ -1174,9 +1247,11 @@ function editNextClass() {
 }
 
 // ================================================================
-// 12. SHOW PAGE (modified to call updateLiveJoinButton)
+// 12. SHOW PAGE (FIX E: call fetchPrayerTimes when navigating to home)
 // ================================================================
 function showPage(page) {
+    currentPage = page;
+
     if (page !== 'dashboard' && isDashboardMode) {
         hideDashboardSidebar();
     }
@@ -1185,12 +1260,21 @@ function showPage(page) {
         return;
     }
     const container = document.getElementById("appContainer");
-    if (page === 'home') renderHomePage(container);
-    else if (page === 'courses') renderCoursesPage(container);
-    else if (page === 'teachers') renderTeachersPage(container);
-    else if (page === 'login') renderUnifiedLoginPage(container);
-    else if (page === 'dashboard' && isLoggedIn && isTeacher) renderAdminDashboard(container);
-    else renderHomePage(container);
+    // FIX E: Call fetchPrayerTimes when user navigates to home page
+    if (page === 'home') {
+        renderHomePage(container);
+        fetchPrayerTimes();
+    } else if (page === 'courses') {
+        renderCoursesPage(container);
+    } else if (page === 'teachers') {
+        renderTeachersPage(container);
+    } else if (page === 'login') {
+        renderUnifiedLoginPage(container);
+    } else if (page === 'dashboard' && isLoggedIn && isTeacher) {
+        renderAdminDashboard(container);
+    } else {
+        renderHomePage(container);
+    }
 
     if (isLoggedIn) {
         document.getElementById("logoutBtn").classList.remove("hidden");
@@ -1204,7 +1288,7 @@ function showPage(page) {
         document.getElementById("adminDashboardBtn").classList.add("hidden");
     }
     updateNotificationBadge();
-    updateLiveJoinButton(); // Ensure join button visibility after navigation
+    updateLiveJoinButton();
 }
 
 function logout() {
@@ -1225,7 +1309,6 @@ window.handleLogout = logout;
 // ================================================================
 // 13. ADMIN DASHBOARD
 // ================================================================
-// ================================================================
 function renderAdminDashboard(container) {
     if (!isLoggedIn || !isTeacher) { renderUnifiedLoginPage(container); return; }
     container.innerHTML = `
@@ -1235,7 +1318,7 @@ function renderAdminDashboard(container) {
                 </div>
             </div>
         `;
-    showDashboardSidebar();
+    setTimeout(showDashboardSidebar, 50);
     updateSidebarActiveState('dashboard');
 }
 
@@ -1279,7 +1362,7 @@ function renderAttendancePanel() {
 }
 
 // ================================================================
-// 14. LIVE CLASS PANEL (MODIFIED: replaced Start button with startLiveWithOptions)
+// 14. LIVE CLASS PANEL
 // ================================================================
 function renderLiveClassPanel() {
     if (!requireAuth()) return '';
@@ -1329,7 +1412,7 @@ function renderLiveClassPanel() {
 }
 
 // ================================================================
-// 15. NOTIFICATIONS PANEL – WITH READ STATUS
+// 15. NOTIFICATIONS PANEL
 // ================================================================
 function renderNotificationsPanel() {
     if (!requireAuth()) return '';
@@ -1554,7 +1637,7 @@ window.refreshData = function() {
 };
 
 // ================================================================
-// 20. DASHBOARD SECURITY LOGIN (UPDATED)
+// 20. DASHBOARD SECURITY LOGIN
 // ================================================================
 const securityLoginHTML = `
         <div id="dashboardSecurityLogin" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center;">
@@ -1606,6 +1689,11 @@ window.closeSecurityLogin = function() {
 window.handleDashboardClick = function() {
     if (!isLoggedIn || !isTeacher) {
         alert('Please login as Admin first');
+        return;
+    }
+    const alreadyVerified = localStorage.getItem("adminAuth") === "true";
+    if (alreadyVerified) {
+        showPage('dashboard');
         return;
     }
     document.getElementById('dashboardSecurityLogin').style.display = 'flex';
@@ -1667,75 +1755,218 @@ document.addEventListener('DOMContentLoaded', function() {
 // ================================================================
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js')
-        .then(() => console.log('✅ Service Worker registered'))
+        .then(registration => {
+            console.log('✅ Service Worker registered');
+        })
         .catch(err => console.log('❌ Service Worker registration failed:', err));
 }
 
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.ready.then(registration => {
-        console.log('Service Worker ready for push notifications.');
-    });
-}
-
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    const installBtn = document.createElement('button');
-    installBtn.textContent = '📲 Install App';
-    installBtn.style.cssText =
-        'position:fixed; bottom:100px; right:20px; z-index:9999; background:var(--gold); color:#0a1620; padding:12px 24px; border-radius:30px; font-weight:bold; border:none; cursor:pointer; box-shadow:0 4px 15px rgba(0,0,0,0.3);';
-    installBtn.onclick = async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const result = await deferredPrompt.userChoice;
-            if (result.outcome === 'accepted') {
-                console.log('✅ App installed');
-            } else {
-                console.log('❌ Installation declined');
-            }
-            deferredPrompt = null;
-            installBtn.remove();
-        }
-    };
-    document.body.appendChild(installBtn);
-});
-let deferredPrompt;
+let deferredPrompt = null;
 
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    
-    // Show your custom install button
     const installBtn = document.getElementById('installAppBtn');
-    if (installBtn) installBtn.style.display = 'block';
+    if (installBtn) {
+        installBtn.style.display = 'inline-flex';
+        console.log('✅ Install button is now visible');
+    }
 });
 
-// When user clicks the custom install button
+window.addEventListener('appinstalled', () => {
+    console.log('✅ App installed successfully');
+    const installBtn = document.getElementById('installAppBtn');
+    if (installBtn) installBtn.style.display = 'none';
+});
+
 function installApp() {
     if (deferredPrompt) {
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then((result) => {
             if (result.outcome === 'accepted') {
                 console.log('✅ App installed');
+                const installBtn = document.getElementById('installAppBtn');
+                if (installBtn) installBtn.style.display = 'none';
             } else {
                 console.log('❌ Installation declined');
             }
             deferredPrompt = null;
         });
+    } else {
+        alert('📱 To install this app on your device:\n\n' +
+              '• Android/Chrome: Tap the install button in the address bar\n' +
+              '• iPhone/iPad: Tap Share (⬆) then "Add to Home Screen"');
     }
 }
+window.installApp = installApp;
+
 // ================================================================
-// 24. INITIALIZATION
+// 24. INITIALIZATION (FIX C: removed fetchPrayerTimes from init)
 // ================================================================
 loadData();
 setupWhatsAppButtons();
-fetchPrayerTimes();
 loadNotificationData();
 updateNotificationBadge();
-
-// Ensure join button state on load
 updateLiveJoinButton();
+
+// ================================================================
+// 9B. ADHAN PRAYER TIME NOTIFICATIONS
+// ================================================================
+let prayerNotifInterval = null;
+let lastNotifiedPrayer = null;
+let adhanNotifEnabled = false;
+
+const prayerNames = {
+    Fajr: 'Fajr — الفجر',
+    Zuhr: 'Zuhr — الظهر',
+    Asr: 'Asr — العصر',
+    Maghrib: 'Maghrib — المغرب',
+    Isha: 'Isha — العشاء'
+};
+
+async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        showAdhanToast('❌ This browser does not support notifications.');
+        return false;
+    }
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') {
+        showAdhanToast('❌ Notifications blocked. Enable them in browser settings.');
+        return false;
+    }
+    const result = await Notification.requestPermission();
+    return result === 'granted';
+}
+
+function showAdhanToast(message, duration = 6000) {
+    const existing = document.getElementById('adhanToast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.id = 'adhanToast';
+    toast.style.cssText = `
+        position:fixed; top:80px; left:50%; transform:translateX(-50%);
+        background:linear-gradient(135deg, #1a3a2a, #0d5c2e);
+        color:#fff; padding:1rem 1.5rem; border-radius:16px;
+        z-index:99999; text-align:center; max-width:340px; width:90%;
+        font-size:0.95rem; box-shadow:0 8px 30px rgba(0,0,0,0.5);
+        border:1px solid #2ecc71; line-height:1.6;
+        animation: fadeIn 0.4s ease;
+    `;
+    toast.innerHTML = `
+        ${message}
+        <br><button onclick="this.parentElement.remove()"
+        style="margin-top:8px; background:rgba(255,255,255,0.2); border:none;
+        color:#fff; padding:4px 16px; border-radius:8px; cursor:pointer; font-size:0.8rem;">
+        Close</button>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => { if (toast.parentElement) toast.remove(); }, duration);
+}
+
+function fireAdhanNotification(prayerName, time, country) {
+    const title = `🕌 ${prayerNames[prayerName] || prayerName}`;
+    const body = `It is time for ${prayerName} prayer — ${time}\n${country}\n\nاللَّهُ أَكْبَر`;
+
+    if (Notification.permission === 'granted') {
+        try {
+            const notif = new Notification(title, {
+                body: body,
+                icon: 'https://cdn-icons-png.flaticon.com/512/3132/3132998.png',
+                badge: 'https://cdn-icons-png.flaticon.com/512/3132/3132998.png',
+                tag: `adhan-${prayerName}`,
+                requireInteraction: true,
+                vibrate: [200, 100, 200, 100, 200]
+            });
+            notif.onclick = () => { window.focus(); notif.close(); };
+        } catch(e) { console.log('Notification error:', e); }
+    }
+
+    showAdhanToast(`🕌 <strong>${prayerNames[prayerName]}</strong><br>Time: ${time}<br><em>اللَّهُ أَكْبَر — اللَّهُ أَكْبَر</em>`, 15000);
+}
+
+function checkPrayerTimes() {
+    if (!adhanNotifEnabled) return;
+
+    const now = new Date();
+    const currentHour = now.getHours().toString().padStart(2, '0');
+    const currentMin = now.getMinutes().toString().padStart(2, '0');
+    const currentTime = `${currentHour}:${currentMin}`;
+
+    const allTimes = [
+        ...Object.entries(prayerTimesEgypt).map(([name, time]) => ({ name, time: time?.substring(0,5), country: '🇪🇬 Egypt' })),
+        ...Object.entries(prayerTimesNigeria).map(([name, time]) => ({ name, time: time?.substring(0,5), country: '🇳🇬 Nigeria' }))
+    ];
+
+    allTimes.forEach(({ name, time, country }) => {
+        if (!time || time === '--:--') return;
+        const key = `${name}-${country}-${time}`;
+        if (time === currentTime && lastNotifiedPrayer !== key) {
+            lastNotifiedPrayer = key;
+            fireAdhanNotification(name, time, country);
+        }
+    });
+}
+
+function startAdhanNotifications() {
+    requestNotificationPermission().then(granted => {
+        if (granted) {
+            adhanNotifEnabled = true;
+            localStorage.setItem('adhanNotif', 'true');
+            if (prayerNotifInterval) clearInterval(prayerNotifInterval);
+            prayerNotifInterval = setInterval(checkPrayerTimes, 30000);
+            checkPrayerTimes();
+            showAdhanToast('✅ Adhan notifications enabled! You will be notified at each prayer time. 🕌');
+            updateAdhanButton();
+        }
+    });
+}
+
+function stopAdhanNotifications() {
+    adhanNotifEnabled = false;
+    localStorage.setItem('adhanNotif', 'false');
+    if (prayerNotifInterval) {
+        clearInterval(prayerNotifInterval);
+        prayerNotifInterval = null;
+    }
+    showAdhanToast('🔕 Adhan notifications disabled.');
+    updateAdhanButton();
+}
+
+function toggleAdhanNotifications() {
+    if (adhanNotifEnabled) {
+        stopAdhanNotifications();
+    } else {
+        startAdhanNotifications();
+    }
+}
+window.toggleAdhanNotifications = toggleAdhanNotifications;
+
+function updateAdhanButton() {
+    const btn = document.getElementById('adhanToggleBtn');
+    if (!btn) return;
+    if (adhanNotifEnabled) {
+        btn.innerHTML = '🔔 Adhan ON';
+        btn.style.background = '#2ecc71';
+        btn.style.color = '#fff';
+    } else {
+        btn.innerHTML = '🔕 Adhan OFF';
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--gold)';
+    }
+}
+
+function loadAdhanSetting() {
+    const saved = localStorage.getItem('adhanNotif');
+    if (saved === 'true') {
+        adhanNotifEnabled = true;
+        if (prayerNotifInterval) clearInterval(prayerNotifInterval);
+        prayerNotifInterval = setInterval(checkPrayerTimes, 30000);
+    }
+    updateAdhanButton();
+}
+
+// Load adhan setting on init
+loadAdhanSetting();
 
 console.log('✅ Mubarak Smart Islamic Academy loaded successfully!');
 console.log('🔐 Admin credentials: mubarak / ' + adminPassword);
@@ -1749,3 +1980,10 @@ console.log('👥 Live participants are now real-time and no fake students.');
 console.log('🔄 Jitsi error handling with reconnect and retry.');
 console.log('🔔 Notification badge implemented with PWA Badging API support.');
 console.log('🔴 Live join button appears when ?live=room-name is detected.');
+console.log('📲 Install App button appears when PWA install is supported.');
+console.log('✅ FIX A: fetchPrayerTimes() updates only prayer time elements');
+console.log('✅ FIX B: fetchPrayerTimes() called after successful login');
+console.log('✅ FIX C: fetchPrayerTimes() removed from initialization');
+console.log('✅ FIX D: activeLiveClassTime removed in stopLiveClass()');
+console.log('✅ FIX E: fetchPrayerTimes() called when navigating to home page');
+console.log('🕌 Adhan notifications enabled — will alert at each prayer time.');
