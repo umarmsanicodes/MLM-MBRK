@@ -823,12 +823,10 @@ function generateRoomName() {
     return 'mlm-live-' + Date.now();
 }
 
-// NEW: Generate the full shareable link based on GitHub Pages base URL
+// NEW: Generate the full shareable link using the fixed GitHub Pages base URL
 function generateLiveLink(roomName, type) {
-    const base = window.location.origin + window.location.pathname;
-    // Ensure the path ends with / (if not already)
-    const baseUrl = base.endsWith('/') ? base : base + '/';
-    return baseUrl + '?live=' + encodeURIComponent(roomName) + '&type=' + encodeURIComponent(type);
+    const BASE_APP_URL = "https://umarmsanicodes.github.io/MLM-MBRK/";
+    return `${BASE_APP_URL}?live=${encodeURIComponent(roomName)}&type=${encodeURIComponent(type)}`;
 }
 
 // NEW: Show the live link box in the dashboard
@@ -1226,6 +1224,7 @@ window.handleLogout = logout;
 
 // ================================================================
 // 13. ADMIN DASHBOARD
+// ================================================================
 // ================================================================
 function renderAdminDashboard(container) {
     if (!isLoggedIn || !isTeacher) { renderUnifiedLoginPage(container); return; }
@@ -1701,7 +1700,31 @@ window.addEventListener('beforeinstallprompt', (e) => {
     };
     document.body.appendChild(installBtn);
 });
+let deferredPrompt;
 
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // Show your custom install button
+    const installBtn = document.getElementById('installAppBtn');
+    if (installBtn) installBtn.style.display = 'block';
+});
+
+// When user clicks the custom install button
+function installApp() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((result) => {
+            if (result.outcome === 'accepted') {
+                console.log('✅ App installed');
+            } else {
+                console.log('❌ Installation declined');
+            }
+            deferredPrompt = null;
+        });
+    }
+}
 // ================================================================
 // 24. INITIALIZATION
 // ================================================================
