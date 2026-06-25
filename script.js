@@ -1,6 +1,5 @@
 // ================================================================
 // 0. ENSURE BODY HAS 'pre-login' CLASS FROM THE START
-//    This hides the navbar immediately, preventing any flash.
 // ================================================================
 document.body.classList.add('pre-login');
 
@@ -73,8 +72,8 @@ document.body.classList.add('pre-login');
             setTimeout(() => {
                 splashScreen.style.display = 'none';
                 renderUnifiedLoginPage(document.getElementById('appContainer'));
-                document.getElementById("logoutBtn").classList.add("hidden");
-                document.getElementById("adminDashboardBtn").classList.add("hidden");
+                document.getElementById("logoutBtn").classList.remove("hidden");
+                document.getElementById("adminDashboardBtn").classList.remove("hidden"); // show dashboard button
                 updateNotificationBadge();
             }, 1200);
         }, 1800);
@@ -100,6 +99,7 @@ function openJitsiMeeting(roomName, displayName, isHost) {
 
     container.innerHTML = '';
     overlay.classList.add('active');
+    overlay.classList.remove('minimized');
 
     try {
         const domain = 'meet.jit.si';
@@ -222,6 +222,12 @@ function closeJitsiMeeting() {
     liveParticipants = [];
     renderLiveParticipants();
 }
+
+function minimizeJitsi() {
+    const overlay = document.getElementById('jitsiOverlay');
+    overlay.classList.toggle('minimized');
+}
+window.minimizeJitsi = minimizeJitsi;
 
 function updateParticipantCount() {
     if (!jitsiApiInstance) return;
@@ -428,7 +434,6 @@ function updateNotificationBadge() {
     }
     const notifCount = document.getElementById('notifCount');
     if (notifCount) notifCount.textContent = unread;
-
     if (navigator.setAppBadge) {
         navigator.setAppBadge(unread).catch(() => {});
     } else if (navigator.clearAppBadge) {
@@ -446,22 +451,25 @@ function markAllNotificationsRead() {
     updateNotificationBadge();
 }
 
+// ===== NOTIFICATION PANEL – NOW STUDENTS CAN VIEW READ-ONLY =====
 function toggleNotificationPanel() {
-    if (isLoggedIn && isTeacher) {
-        if (isDashboardMode) {
-            switchDashboardSection('notifications');
-        } else {
-            showPage('dashboard');
-            setTimeout(() => {
-                switchDashboardSection('notifications');
-            }, 300);
-        }
-    } else if (isLoggedIn && !isTeacher) {
-        alert('Check your notifications in the dashboard (Admin only for now)');
-    } else {
+    if (!isLoggedIn) {
         alert('Please login to view notifications.');
+        return;
     }
+    // If already in dashboard mode, switch to notifications section
+    if (isDashboardMode) {
+        switchDashboardSection('notifications');
+        return;
+    }
+    // Otherwise open the dashboard notifications section
+    // Students can view notifications, but edit/delete buttons will be hidden
+    showPage('dashboard');
+    setTimeout(() => {
+        switchDashboardSection('notifications');
+    }, 300);
 }
+window.toggleNotificationPanel = toggleNotificationPanel;
 
 // ================================================================
 // 5. AUTHENTICATION
@@ -640,6 +648,9 @@ function loadData() {
 
     const savedRoomType = localStorage.getItem("liveRoomType");
     if (savedRoomType) liveRoomType = savedRoomType;
+
+    // Update live join button visibility after loading
+    updateLiveJoinButton();
 }
 
 function saveData() {
@@ -664,7 +675,7 @@ function renderUnifiedLoginPage(container) {
                     <h2 style="margin-top:0.5rem;">Welcome to Mubarak Academy</h2>
                     <p style="color:var(--gold-light); margin-bottom:1rem;">Please login to continue</p>
                     <div class="login-tabs">
-                        <!-- ADMIN TAB IS NOW ACTIVE BY DEFAULT -->
+                        <!-- ADMIN TAB ACTIVE BY DEFAULT -->
                         <div class="login-tab" data-tab="student" onclick="switchLoginTab('student')">Student Login</div>
                         <div class="login-tab active" data-tab="admin" onclick="switchLoginTab('admin')">Admin Login</div>
                     </div>
@@ -714,17 +725,10 @@ window.handleAdminLoginUnified = function() {
     const cleanUser = ultraTrim(user).toLowerCase();
     const cleanPass = ultraTrim(pass);
 
-    // Accept both 'mubarak' and 'admin' as username
     const validUsers = ["mubarak", "admin"];
-
-    // FALLBACK: always accept "0708070" as a valid password,
-    // even if the stored password is different.
-    // This ensures users can always log in on any device.
     const isValidPass = (cleanPass === adminPassword) || (cleanPass === "0708070");
 
     if (validUsers.includes(cleanUser) && isValidPass) {
-        // If the user used the default password, reset the stored password
-        // so that future logins work without the fallback.
         if (cleanPass === "0708070" && adminPassword !== "0708070") {
             adminPassword = "0708070";
             localStorage.setItem("admin_password", adminPassword);
@@ -736,7 +740,7 @@ window.handleAdminLoginUnified = function() {
         isTeacher = true;
         localStorage.setItem("adminAuth", "true");
         document.getElementById("logoutBtn").classList.remove("hidden");
-        document.getElementById("adminDashboardBtn").classList.remove("hidden");
+        document.getElementById("adminDashboardBtn").classList.remove("hidden"); // always visible
         loadNotificationData();
         updateNotificationBadge();
         showPage('home');
@@ -770,7 +774,7 @@ window.handleStudentLogin = function() {
     isTeacher = false;
     localStorage.setItem("studentAuth", JSON.stringify({ id: found.id, name: found.name }));
     document.getElementById("logoutBtn").classList.remove("hidden");
-    document.getElementById("adminDashboardBtn").classList.add("hidden");
+    document.getElementById("adminDashboardBtn").classList.remove("hidden"); // always visible
     loadNotificationData();
     updateNotificationBadge();
     showPage('home');
@@ -830,6 +834,7 @@ function startJitsiClass(className) {
 
     alert(`✅ Live class "${className}" started! Students can now join.`);
     updateSidebarBadges();
+    updateLiveJoinButton(); // show join button in navbar
 }
 
 window.startVoiceClass = function() {
@@ -851,6 +856,7 @@ window.stopLiveClass = function() {
         exitLiveMode();
     }
     updateSidebarBadges();
+    updateLiveJoinButton(); // hide join button
     alert("Live class stopped. All participants disconnected.");
     showPage('home');
 };
@@ -899,6 +905,21 @@ function exitLiveMode() {
     document.body.classList.remove('live-mode');
 }
 
+// ===== NAVBAR LIVE JOIN BUTTON VISIBILITY =====
+function updateLiveJoinButton() {
+    const btn = document.getElementById('liveJoinNavBtn');
+    if (btn) {
+        if (activeLiveClass) {
+            btn.style.display = 'inline-flex';
+            btn.style.animation = 'pulse 1.5s infinite';
+        } else {
+            btn.style.display = 'none';
+            btn.style.animation = 'none';
+        }
+    }
+}
+window.updateLiveJoinButton = updateLiveJoinButton;
+
 // ================================================================
 // 11. PAGE RENDER FUNCTIONS
 // ================================================================
@@ -935,6 +956,7 @@ function renderHomePage(container) {
     const bottomWhatsApp = document.getElementById("whatsappBottomBtn");
     if (bottomWhatsApp) bottomWhatsApp.addEventListener("click", (e) => { e.preventDefault();
         window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, "_blank"); });
+    updateLiveJoinButton();
 }
 
 function renderCoursesPage(container) {
@@ -942,6 +964,7 @@ function renderCoursesPage(container) {
     container.innerHTML =
         `<div class="glass-card"><h2>📚 Our Premium Courses</h2><div class="courses-grid">${courses.map(c => `<div class="course-card glass-card"><i class="${c.icon} fa-3x"></i><h3>${c.name}</h3><p><strong>Teacher:</strong> ${c.teacher}</p><p>${c.description}</p><button class="nav-btn" onclick="alert('Enrollment open! Contact admin.')">Enroll Now</button></div>`).join('')}</div></div>
             <footer style="width:100%; margin-top:2rem; padding:1.5rem; background:rgba(5,18,30,0.95); text-align:center; border-top:2px solid var(--gold); border-radius:0;"><p>© Mubarak Smart Islamic Academy</p><p>Powered by Manu's Smart Web Developer</p></footer>`;
+    updateLiveJoinButton();
 }
 
 function renderTeachersPage(container) {
@@ -949,6 +972,7 @@ function renderTeachersPage(container) {
     container.innerHTML =
         `<div class="glass-card"><h2><i class="fas fa-chalkboard-user"></i> Our Respected Teachers</h2><div class="teachers-grid">${teachers.map(t => `<div class="teacher-card glass-card"><img src="${t.imageData || t.imageUrl || 'https://via.placeholder.com/100'}" class="teacher-img" onerror="this.src='https://via.placeholder.com/100'"><h3>${t.name}</h3><p><strong>${t.title}</strong></p><p>${t.bio}</p></div>`).join('')}</div></div>
             <footer style="width:100%; margin-top:2rem; padding:1.5rem; background:rgba(5,18,30,0.95); text-align:center; border-top:2px solid var(--gold); border-radius:0;"><p>© Mubarak Smart Islamic Academy</p><p>Powered by Manu's Smart Web Developer</p></footer>`;
+    updateLiveJoinButton();
 }
 
 function editNextClass() {
@@ -982,18 +1006,16 @@ function showPage(page) {
     else if (page === 'dashboard' && isLoggedIn && isTeacher) renderAdminDashboard(container);
     else renderHomePage(container);
 
+    // Dashboard button is always visible for logged-in users
     if (isLoggedIn) {
         document.getElementById("logoutBtn").classList.remove("hidden");
-        if (isTeacher) {
-            document.getElementById("adminDashboardBtn").classList.remove("hidden");
-        } else {
-            document.getElementById("adminDashboardBtn").classList.add("hidden");
-        }
+        document.getElementById("adminDashboardBtn").classList.remove("hidden"); // always visible
     } else {
         document.getElementById("logoutBtn").classList.add("hidden");
         document.getElementById("adminDashboardBtn").classList.add("hidden");
     }
     updateNotificationBadge();
+    updateLiveJoinButton();
 }
 
 function logout() {
@@ -1025,6 +1047,7 @@ function renderAdminDashboard(container) {
         `;
     showDashboardSidebar();
     updateSidebarActiveState('dashboard');
+    updateLiveJoinButton();
 }
 
 function switchDashboardSection(section) {
@@ -1043,6 +1066,7 @@ function switchDashboardSection(section) {
     else if (section === 'settings') contentDiv.innerHTML = renderSettingsPanel();
     updateSidebarActiveState(section);
     if (window.innerWidth <= 768) closeDashboardSidebar();
+    updateLiveJoinButton();
 }
 window.switchDashboardSection = switchDashboardSection;
 
@@ -1117,13 +1141,14 @@ function renderLiveClassPanel() {
 }
 
 // ================================================================
-// 15. NOTIFICATIONS PANEL – WITH READ STATUS
+// 15. NOTIFICATIONS PANEL – STUDENTS CAN VIEW READ-ONLY
 // ================================================================
 function renderNotificationsPanel() {
     if (!requireAuth()) return '';
     markAllNotificationsRead();
 
-    let html = `<div class="glass-card"><h3>Manage Notifications</h3>`;
+    let html = `<div class="glass-card"><h3>Notifications</h3>`;
+    // Only show "Add Announcement" button if user is teacher
     if (isTeacher) {
         html += `<button onclick="addNotification()">+ Add Announcement</button>`;
     }
@@ -1202,7 +1227,7 @@ function renderSettingsPanel() {
 }
 
 // ================================================================
-// 18. CRUD OPERATIONS
+// 18. CRUD OPERATIONS (unchanged)
 // ================================================================
 window.toggleBlockStudent = function(id, source) {
     const student = students.find(s => s.id === id);
@@ -1342,7 +1367,7 @@ window.refreshData = function() {
 };
 
 // ================================================================
-// 20. DASHBOARD SECURITY LOGIN (UPDATED)
+// 20. DASHBOARD SECURITY LOGIN (ADMIN-ONLY)
 // ================================================================
 const securityLoginHTML = `
         <div id="dashboardSecurityLogin" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center;">
@@ -1392,10 +1417,12 @@ window.closeSecurityLogin = function() {
 };
 
 window.handleDashboardClick = function() {
-    if (!isLoggedIn || !isTeacher) {
-        alert('Please login as Admin first');
+    // If already logged in as admin, go directly to dashboard
+    if (isLoggedIn && isTeacher) {
+        showPage('dashboard');
         return;
     }
+    // Otherwise show the admin login popup
     document.getElementById('dashboardSecurityLogin').style.display = 'flex';
     document.getElementById('appContainer').style.display = 'none';
     document.getElementById('securityError').textContent = '';
@@ -1497,6 +1524,7 @@ setupWhatsAppButtons();
 fetchPrayerTimes();
 loadNotificationData();
 updateNotificationBadge();
+updateLiveJoinButton(); // ensure button state on load
 
 console.log('✅ Mubarak Smart Islamic Academy loaded successfully!');
 console.log('🔐 Admin credentials: mubarak / ' + adminPassword);
@@ -1509,3 +1537,4 @@ console.log('📦 PWA ready.');
 console.log('👥 Live participants are now real-time and no fake students.');
 console.log('🔄 Jitsi error handling with reconnect and retry.');
 console.log('🔔 Notification badge implemented with PWA Badging API support.');
+console.log('🔴 Live join button appears in navbar when class is active.');

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
 
-    <!-- MOBILE FIX (IMPORTANT) -->
+    <!-- MOBILE FIX -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
     <title>Mubarak Smart Islamic Academy</title>
@@ -16,7 +16,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <!-- ICON (optional if no image) -->
+    <!-- ICON -->
     <link rel="icon" href="icon-192.png">
     <link rel="apple-touch-icon" href="icon-192.png">
 
@@ -35,15 +35,13 @@
             -webkit-text-size-adjust: 100%;
             text-size-adjust: 100%;
         }
-
         body {
             margin: 0;
             padding: 0;
             font-family: 'Inter', sans-serif;
         }
-
         input, button, textarea {
-            font-size: 16px; /* FIX MOBILE ZOOM ISSUE */
+            font-size: 16px;
         }
     </style>
 </head>
@@ -78,17 +76,26 @@
         </div>
         <div class="nav-links">
             <button class="nav-btn" onclick="showPage('home')">Home</button>
-            <button class="nav-btn" onclick="showPage('courses')">Cours</button>
-            <button class="nav-btn" onclick="showPage('teachers')">Tcher</button>
-            <button class="nav-btn admin-dashboard-btn hidden" id="adminDashboardBtn" onclick="handleDashboardClick()">
-                <i class="fas fa-tachometer-alt"></i> Dash
+            <button class="nav-btn" onclick="showPage('courses')">Courses</button>
+            <button class="nav-btn" onclick="showPage('teachers')">Teachers</button>
+
+            <!-- 🔐 DASHBOARD BUTTON – VISIBLE TO ALL USERS (NO 'hidden' CLASS) -->
+            <button class="nav-btn admin-dashboard-btn" id="adminDashboardBtn" onclick="handleDashboardClick()">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
             </button>
-            <!-- Notification Bell -->
+
+            <!-- 🔔 NOTIFICATION BELL – VISIBLE TO ALL LOGGED-IN USERS -->
             <button class="nav-btn" id="notificationBell" onclick="toggleNotificationPanel()" style="position:relative;">
                 <i class="fas fa-bell"></i>
                 <span id="notificationBadge" style="position:absolute; top:-8px; right:-8px; background:red; color:white; border-radius:50%; padding:2px 6px; font-size:0.6rem; display:none;">0</span>
             </button>
-            <button class="nav-btn hidden" id="logoutBtn" onclick="logout()">Log.</button>
+
+            <!-- 🔴 LIVE CLASS JOIN BUTTON (shows only when class is active) -->
+            <button class="nav-btn live-join-nav-btn" id="liveJoinNavBtn" onclick="window.joinLiveClass()" style="display:none;">
+                <i class="fas fa-video"></i> 🔴 JOIN LIVE
+            </button>
+
+            <button class="nav-btn" id="logoutBtn" onclick="logout()">Logout</button>
         </div>
     </div>
 
@@ -149,29 +156,36 @@
         <i class="fab fa-whatsapp"></i>
     </a>
 
-    <!-- ===== JITSI LIVE ROOM OVERLAY ===== -->
+    <!-- ===== JITSI LIVE ROOM – CONTAINED PANEL ===== -->
     <div id="jitsiOverlay">
-        <!-- Error/Reconnect overlay -->
-        <div id="jitsiConnectionStatus" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:10; background:rgba(0,0,0,0.8); padding:2rem; border-radius:16px; text-align:center; border:1px solid var(--gold);">
-            <i class="fas fa-exclamation-triangle" style="color:var(--gold); font-size:2rem; margin-bottom:1rem;"></i>
-            <p id="connectionMessage" style="color:#fff; margin-bottom:1rem;">Reconnecting...</p>
-            <button onclick="retryJitsiConnection()" style="background:var(--gold); color:#0a1620; padding:10px 24px; border-radius:30px; border:none; font-weight:600; cursor:pointer;">Retry</button>
-        </div>
-        <div class="live-room-wrapper">
-            <div class="video-container">
-                <div id="jitsiIframeContainer"></div>
-            </div>
-            <div class="participants-container">
-                <h3><i class="fas fa-users"></i> Participants</h3>
-                <div id="liveParticipantsContainer">
-                    <!-- Dynamically populated -->
+        <div class="jitsi-panel">
+            <!-- Header with room name and controls -->
+            <div class="jitsi-header">
+                <span class="jitsi-room-label" id="jitsiRoomLabel">📹 Live Class</span>
+                <div class="jitsi-header-actions">
+                    <button id="jitsiMinimizeBtn" onclick="minimizeJitsi()" title="Minimize">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <button class="leave-btn" onclick="window.leaveLiveClass()">✕ Leave</button>
+                    <button id="jitsiEndClassBtn" class="end-btn" onclick="window.stopLiveClass()" style="display:none;">⏹ End</button>
                 </div>
             </div>
-        </div>
-        <div id="jitsiControls">
-            <span class="jitsi-room-label" id="jitsiRoomLabel">📹 Live Class</span>
-            <button class="leave-btn" onclick="window.leaveLiveClass()">✕ Leave Class</button>
-            <button id="jitsiEndClassBtn" class="end-btn" onclick="window.stopLiveClass()" style="display:none;">⏹ End Class</button>
+
+            <!-- Main layout: 60% video / 40% participants -->
+            <div class="live-room-wrapper">
+                <div class="video-container" id="jitsiIframeContainer"></div>
+                <div class="participants-container">
+                    <h3><i class="fas fa-users"></i> Participants</h3>
+                    <div id="liveParticipantsContainer"></div>
+                </div>
+            </div>
+
+            <!-- Connection status -->
+            <div id="jitsiConnectionStatus" style="display:none; text-align:center; padding:1rem;">
+                <i class="fas fa-exclamation-triangle" style="color:var(--gold); font-size:1.5rem;"></i>
+                <p id="connectionMessage" style="color:#fff;">Reconnecting...</p>
+                <button onclick="retryJitsiConnection()" style="background:var(--gold); color:#0a1620; padding:8px 20px; border-radius:30px; border:none; font-weight:600; cursor:pointer;">Retry</button>
+            </div>
         </div>
     </div>
 
