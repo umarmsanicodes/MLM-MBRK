@@ -910,7 +910,6 @@ function startLiveSession() {
     startJitsiClassWithRoom(room, voiceOnly);
 }
 
-// ✅ NO PERMISSION CHECK
 function startJitsiClassWithRoom(roomName, voiceOnly = false) {
     if (!isLoggedIn || !isTeacher) {
         alert("Only Admin can start live class.");
@@ -1042,7 +1041,6 @@ window.stopLiveClass = function() {
     showPage('home');
 };
 
-// ✅ NO PERMISSION CHECK
 window.joinLiveClass = function(role) {
     if (!activeLiveClass) {
         alert("No live class active. Admin must start a class first.");
@@ -1081,6 +1079,12 @@ function enterLiveMode() {
         hideDashboardSidebar();
     }
     renderLiveParticipants();
+
+    // --- PATCH: Hide End Class button for non-admin ---
+    const endBtn = document.getElementById('endClassBtn');
+    if (endBtn) {
+        endBtn.style.display = isTeacher ? 'inline-block' : 'none';
+    }
 }
 
 function exitLiveMode() {
@@ -1882,4 +1886,5 @@ console.log('🔐 Admin credentials: mubarak / ' + adminPassword);
 console.log('   (or use "admin" as username with the same password)');
 console.log('   If you forgot your password, use "0708070" — it always works.');
 console.log('✅ FIX: NO permission check before Jitsi – Jitsi handles camera/mic');
+console.log('✅ FIX: End Class button hidden for students');
 console.log('🕌 Adhan notifications enabled — will alert at each prayer time.');
