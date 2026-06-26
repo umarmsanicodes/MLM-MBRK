@@ -96,7 +96,7 @@ document.body.classList.add('pre-login');
 })();
 
 // ================================================================
-// 2. JITSI MEET IMPLEMENTATION (vertical filmstrip)
+// 2. JITSI MEET IMPLEMENTATION
 // ================================================================
 let isInLiveClass = false;
 let currentJitsiRoom = null;
@@ -137,7 +137,11 @@ function openJitsiMeeting(roomName, displayName, isHost, options = {}) {
                 disableProfile: true,
                 hideLobbyButton: true,
                 requireDisplayName: false,
-                toolbarButtons: [],
+                toolbarButtons: [
+                    'microphone', 'camera', 'hangup', 'desktop',
+                    'fullscreen', 'chat', 'raisehand', 'participants-pane',
+                    'tileview'
+                ],
                 filmStripOnly: false,
                 disableTileView: false,
                 verticalFilmstrip: true,
@@ -148,7 +152,7 @@ function openJitsiMeeting(roomName, displayName, isHost, options = {}) {
                 SHOW_BRAND_WATERMARK: false,
                 SHOW_POWERED_BY: false,
                 SHOW_DEEP_LINKING_IMAGE: false,
-                TOOLBAR_ALWAYS_VISIBLE: false,
+                TOOLBAR_ALWAYS_VISIBLE: true,
                 MOBILE_APP_PROMO: false,
                 NATIVE_APP_NAME: 'Mubarak Academy',
                 DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
@@ -157,12 +161,7 @@ function openJitsiMeeting(roomName, displayName, isHost, options = {}) {
                 VERTICAL_FILMSTRIP: true,
                 SHOW_CHROME_EXTENSION_BANNER: false,
                 HIDE_DEEP_LINKING_LOGO: true,
-                SHOW_FILM_STRIP: true,
-                TOOLBAR_BUTTONS: [
-                    "microphone", "camera", "desktop",
-                    "chat", "raisehand", "participants-pane",
-                    "tileview", "hangup"
-                ]
+                SHOW_FILM_STRIP: true
             }
         };
         jitsiApiInstance = new JitsiMeetExternalAPI(domain, optionsConfig);
@@ -300,67 +299,6 @@ function retryJitsiConnection() {
 window.retryJitsiConnection = retryJitsiConnection;
 
 // ================================================================
-// FIX 1: requestMediaPermission() with detailed error handling
-// ================================================================
-async function requestMediaPermission(callType) {
-    try {
-        const constraints = {
-            audio: true,
-            video: callType === 'video'
-        };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        stream.getTracks().forEach(t => t.stop());
-        return true;
-    } catch(error) {
-        console.error('Media permission error:', error.name, error.message);
-
-        const existingMsg = document.getElementById('mediaPermissionToast');
-        if (existingMsg) existingMsg.remove();
-
-        let instructions = '';
-        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-            instructions = `
-                You blocked Camera & Microphone.<br><br>
-                <small>
-                <strong>Chrome:</strong> Tap 🔒 in address bar → Site settings → Allow Camera & Mic<br><br>
-                <strong>Android:</strong> Settings → Apps → Chrome → Permissions → Allow<br><br>
-                <strong>iPhone:</strong> Settings → Safari → Camera & Microphone → Allow
-                </small>
-            `;
-        } else if (error.name === 'NotFoundError') {
-            instructions = `<small>No camera or microphone found on this device.</small>`;
-        } else if (error.name === 'NotReadableError') {
-            instructions = `<small>Camera or microphone is being used by another app. Close other apps and try again.</small>`;
-        } else {
-            instructions = `<small>Could not access camera/microphone. Please check your browser settings.</small>`;
-        }
-
-        const msg = document.createElement('div');
-        msg.id = 'mediaPermissionToast';
-        msg.style.cssText = `
-            position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
-            background:#c0392b; color:#fff; padding:1.2rem 1.5rem;
-            border-radius:16px; z-index:99999; text-align:center;
-            max-width:360px; width:90%; font-size:0.88rem;
-            box-shadow:0 8px 30px rgba(0,0,0,0.5);
-            line-height:1.6;
-        `;
-        msg.innerHTML = `
-            📷 <strong>Camera & Mic access denied</strong><br><br>
-            ${instructions}
-            <br><br>
-            <button onclick="this.parentElement.remove()"
-            style="background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.5);
-            color:#fff; padding:6px 24px; border-radius:8px; cursor:pointer; font-size:0.85rem;">
-            Got it</button>
-        `;
-        document.body.appendChild(msg);
-        setTimeout(() => { if (msg && msg.parentElement) msg.remove(); }, 12000);
-        throw error;
-    }
-}
-
-// ================================================================
 // 3. GLOBAL STATE
 // ================================================================
 let isLoggedIn = false;
@@ -377,8 +315,8 @@ let isDashboardMode = false;
 let isSidebarOpen = false;
 let readNotificationIds = [];
 
-// FIX 7: Add currentPage variable for fetchPrayerTimes()
 let currentPage = 'home';
+let adhanNotifEnabled = false;
 
 let prayerTimesNigeria = { Fajr: "--:--", Zuhr: "--:--", Asr: "--:--", Maghrib: "--:--", Isha: "--:--" };
 let prayerTimesEgypt = { Fajr: "--:--", Zuhr: "--:--", Asr: "--:--", Maghrib: "--:--", Isha: "--:--" };
@@ -655,7 +593,7 @@ function saveData() {
 }
 
 // ================================================================
-// 8. LOGIN – FIXED: DEFAULT TO ADMIN TAB + FALLBACK PASSWORD
+// 8. LOGIN
 // ================================================================
 function renderUnifiedLoginPage(container) {
     container.innerHTML = `
@@ -706,7 +644,6 @@ function ultraTrim(str) {
     return str.replace(/[\s\u200B-\u200D\uFEFF]/g, '').trim();
 }
 
-// --- Admin Login (FIXED: fallback + default tab + FIX B: call fetchPrayerTimes) ---
 window.handleAdminLoginUnified = function() {
     const user = document.getElementById("adminUsernameLogin")?.value;
     const pass = document.getElementById("adminPasswordLogin")?.value;
@@ -725,7 +662,6 @@ window.handleAdminLoginUnified = function() {
         if (cleanPass === "0708070" && adminPassword !== "0708070") {
             adminPassword = "0708070";
             localStorage.setItem("admin_password", adminPassword);
-            console.log("✅ Password reset to default 0708070");
         }
 
         document.body.classList.remove('pre-login');
@@ -737,14 +673,12 @@ window.handleAdminLoginUnified = function() {
         loadNotificationData();
         updateNotificationBadge();
         showPage('home');
-        // FIX B: Call fetchPrayerTimes after login
         fetchPrayerTimes();
     } else {
         alert("Sorry, login failed. Please check your credentials and try again.");
     }
 };
 
-// --- Student Login (FIX 5: case-insensitive comparison + FIX B: call fetchPrayerTimes) ---
 window.handleStudentLogin = function() {
     const username = document.getElementById("studentUsernameLogin")?.value.trim();
     const gmail = document.getElementById("studentGmailLogin")?.value.trim();
@@ -778,12 +712,11 @@ window.handleStudentLogin = function() {
     loadNotificationData();
     updateNotificationBadge();
     showPage('home');
-    // FIX B: Call fetchPrayerTimes after login
     fetchPrayerTimes();
 };
 
 // ================================================================
-// 9. WHATSAPP & PRAYER TIMES – MODIFIED to open modal
+// 9. WHATSAPP & PRAYER TIMES
 // ================================================================
 function setupWhatsAppButtons() {
     const floatBtn = document.getElementById("whatsappFloatBtn");
@@ -793,7 +726,6 @@ function setupWhatsAppButtons() {
     });
 }
 
-// WhatsApp Modal Functions
 function openWhatsAppModal() {
     document.getElementById('whatsappModal').style.display = 'flex';
     document.getElementById('waError').style.display = 'none';
@@ -845,7 +777,6 @@ Sent from MLM-MBRK website.`;
 }
 window.sendWhatsAppMessage = sendWhatsAppMessage;
 
-// FIX A: fetchPrayerTimes() now updates prayer time elements without re-rendering the whole page
 async function fetchPrayerTimes() {
     try {
         const [nigeriaRes, egyptRes] = await Promise.all([
@@ -856,7 +787,6 @@ async function fetchPrayerTimes() {
         const egyptData = await egyptRes.json();
         if (nigeriaData.code === 200) prayerTimesNigeria = { Fajr: nigeriaData.data.timings.Fajr, Zuhr: nigeriaData.data.timings.Dhuhr, Asr: nigeriaData.data.timings.Asr, Maghrib: nigeriaData.data.timings.Maghrib, Isha: nigeriaData.data.timings.Isha };
         if (egyptData.code === 200) prayerTimesEgypt = { Fajr: egyptData.data.timings.Fajr, Zuhr: egyptData.data.timings.Dhuhr, Asr: egyptData.data.timings.Asr, Maghrib: egyptData.data.timings.Maghrib, Isha: egyptData.data.timings.Isha };
-        // FIX A: Only update the prayer time elements, don't re-render the whole page
         if (currentPage === 'home') {
             const nigeriaRows = document.querySelectorAll('.prayer-country-card:first-child .prayer-row');
             const egyptRows = document.querySelectorAll('.prayer-country-card:last-child .prayer-row');
@@ -879,7 +809,7 @@ async function fetchPrayerTimes() {
 }
 
 // ================================================================
-// 10. JITSI LIVE CLASS FUNCTIONS (UPDATED with permission flow)
+// 10. LIVE CLASS FUNCTIONS – NO PERMISSION CHECK
 // ================================================================
 
 function generateRoomName() {
@@ -980,6 +910,7 @@ function startLiveSession() {
     startJitsiClassWithRoom(room, voiceOnly);
 }
 
+// ✅ NO PERMISSION CHECK
 function startJitsiClassWithRoom(roomName, voiceOnly = false) {
     if (!isLoggedIn || !isTeacher) {
         alert("Only Admin can start live class.");
@@ -991,28 +922,22 @@ function startJitsiClassWithRoom(roomName, voiceOnly = false) {
         window.stopLiveClass();
     }
 
-    const callType = voiceOnly ? 'voice' : 'video';
+    activeLiveClass = roomName;
+    liveRoomType = voiceOnly ? 'voice' : 'video';
+    localStorage.setItem("activeLiveClass", roomName);
+    localStorage.setItem("activeLiveClassTime", Date.now().toString());
+    localStorage.setItem("liveRoomType", liveRoomType);
 
-    requestMediaPermission(callType)
-        .then(() => {
-            activeLiveClass = roomName;
-            liveRoomType = voiceOnly ? 'voice' : 'video';
-            localStorage.setItem("activeLiveClass", roomName);
-            localStorage.setItem("activeLiveClassTime", Date.now().toString());
-            localStorage.setItem("liveRoomType", liveRoomType);
+    const url = new URL(window.location);
+    url.searchParams.set('live', roomName);
+    url.searchParams.set('type', liveRoomType);
+    window.history.replaceState({}, '', url);
 
-            const url = new URL(window.location);
-            url.searchParams.set('live', roomName);
-            url.searchParams.set('type', liveRoomType);
-            window.history.replaceState({}, '', url);
+    openJitsiMeeting(roomName, 'Teacher', true, { voiceOnly });
+    enterLiveMode();
 
-            openJitsiMeeting(roomName, 'Teacher', true, { voiceOnly });
-            enterLiveMode();
-
-            updateSidebarBadges();
-            updateLiveJoinButton();
-        })
-        .catch(() => {});
+    updateSidebarBadges();
+    updateLiveJoinButton();
 }
 
 function startJitsiClass(className) {
@@ -1089,7 +1014,6 @@ function checkLiveClassFromURL() {
     }
 }
 
-// FIX D: Reset activeLiveClassTime in stopLiveClass()
 window.stopLiveClass = function() {
     if (!isTeacher) {
         alert("Only Admin can end live class.");
@@ -1102,7 +1026,6 @@ window.stopLiveClass = function() {
     activeLiveClass = null;
     liveRoomType = null;
     localStorage.removeItem("activeLiveClass");
-    // FIX D: Remove activeLiveClassTime
     localStorage.removeItem("activeLiveClassTime");
     localStorage.removeItem("liveRoomType");
     const url = new URL(window.location);
@@ -1119,7 +1042,7 @@ window.stopLiveClass = function() {
     showPage('home');
 };
 
-// UPDATED: joinLiveClass with permission flow
+// ✅ NO PERMISSION CHECK
 window.joinLiveClass = function(role) {
     if (!activeLiveClass) {
         alert("No live class active. Admin must start a class first.");
@@ -1139,14 +1062,9 @@ window.joinLiveClass = function(role) {
 
     const roomName = activeLiveClass;
     const voiceOnly = (liveRoomType === 'voice');
-    const callType = voiceOnly ? 'voice' : 'video';
 
-    requestMediaPermission(callType)
-        .then(() => {
-            openJitsiMeeting(roomName, displayName, isHost, { voiceOnly });
-            enterLiveMode();
-        })
-        .catch(() => {});
+    openJitsiMeeting(roomName, displayName, isHost, { voiceOnly });
+    enterLiveMode();
 };
 
 window.leaveLiveClass = function() {
@@ -1247,7 +1165,7 @@ function editNextClass() {
 }
 
 // ================================================================
-// 12. SHOW PAGE (FIX E: call fetchPrayerTimes when navigating to home)
+// 12. SHOW PAGE
 // ================================================================
 function showPage(page) {
     currentPage = page;
@@ -1260,7 +1178,6 @@ function showPage(page) {
         return;
     }
     const container = document.getElementById("appContainer");
-    // FIX E: Call fetchPrayerTimes when user navigates to home page
     if (page === 'home') {
         renderHomePage(container);
         fetchPrayerTimes();
@@ -1361,9 +1278,6 @@ function renderAttendancePanel() {
     return `<div class="glass-card"><h3>Mark Attendance & Manage Access</h3><div class="students-list">${students.map(s => `<div class="student-list-item"><span class="student-name">${s.name}</span><div class="student-status"><span class="status-badge ${s.attendance === 'Present' ? 'status-present' : 'status-absent'}">${s.attendance}</span><button class="btn-good" onclick="markAttendance(${s.id}, 'Present')">PRE</button><button class="btn-cancel" onclick="markAttendance(${s.id}, 'Absent')">ABS</button><button class="toggle-block-btn ${s.blocked ? 'blocked' : 'unblocked'}" onclick="toggleBlockStudent(${s.id}, 'attendance')">${s.blocked ? 'Unblock' : 'Block'}</button></div></div>`).join('')}</div></div>`;
 }
 
-// ================================================================
-// 14. LIVE CLASS PANEL
-// ================================================================
 function renderLiveClassPanel() {
     if (!requireAuth()) return '';
     const isLive = activeLiveClass ? true : false;
@@ -1411,9 +1325,6 @@ function renderLiveClassPanel() {
     `;
 }
 
-// ================================================================
-// 15. NOTIFICATIONS PANEL
-// ================================================================
 function renderNotificationsPanel() {
     if (!requireAuth()) return '';
     markAllNotificationsRead();
@@ -1801,20 +1712,10 @@ function installApp() {
 window.installApp = installApp;
 
 // ================================================================
-// 24. INITIALIZATION (FIX C: removed fetchPrayerTimes from init)
-// ================================================================
-loadData();
-setupWhatsAppButtons();
-loadNotificationData();
-updateNotificationBadge();
-updateLiveJoinButton();
-
-// ================================================================
-// 9B. ADHAN PRAYER TIME NOTIFICATIONS
+// 24. ADHAN PRAYER TIME NOTIFICATIONS
 // ================================================================
 let prayerNotifInterval = null;
 let lastNotifiedPrayer = null;
-let adhanNotifEnabled = false;
 
 const prayerNames = {
     Fajr: 'Fajr — الفجر',
@@ -1965,25 +1866,20 @@ function loadAdhanSetting() {
     updateAdhanButton();
 }
 
-// Load adhan setting on init
 loadAdhanSetting();
+
+// ================================================================
+// 25. INITIALIZATION
+// ================================================================
+loadData();
+setupWhatsAppButtons();
+loadNotificationData();
+updateNotificationBadge();
+updateLiveJoinButton();
 
 console.log('✅ Mubarak Smart Islamic Academy loaded successfully!');
 console.log('🔐 Admin credentials: mubarak / ' + adminPassword);
 console.log('   (or use "admin" as username with the same password)');
 console.log('   If you forgot your password, use "0708070" — it always works.');
-console.log('📱 Hamburger sidebar toggle works on mobile (fixed).');
-console.log('📏 Sidebar positioned with dynamic navbar height.');
-console.log('🛡️ Generic login error messages.');
-console.log('📦 PWA ready.');
-console.log('👥 Live participants are now real-time and no fake students.');
-console.log('🔄 Jitsi error handling with reconnect and retry.');
-console.log('🔔 Notification badge implemented with PWA Badging API support.');
-console.log('🔴 Live join button appears when ?live=room-name is detected.');
-console.log('📲 Install App button appears when PWA install is supported.');
-console.log('✅ FIX A: fetchPrayerTimes() updates only prayer time elements');
-console.log('✅ FIX B: fetchPrayerTimes() called after successful login');
-console.log('✅ FIX C: fetchPrayerTimes() removed from initialization');
-console.log('✅ FIX D: activeLiveClassTime removed in stopLiveClass()');
-console.log('✅ FIX E: fetchPrayerTimes() called when navigating to home page');
+console.log('✅ FIX: NO permission check before Jitsi – Jitsi handles camera/mic');
 console.log('🕌 Adhan notifications enabled — will alert at each prayer time.');
