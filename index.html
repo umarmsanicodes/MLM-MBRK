@@ -35,7 +35,7 @@
         body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
         input, button, textarea { font-size: 16px; }
 
-        /* Install App Button - inlined to ensure visibility */
+        /* Install App Button */
         #installAppBtn {
             display: none;
             background: #2ecc71;
@@ -61,6 +61,27 @@
             #installAppBtn span { display: none; }
             #installAppBtn::before { content: "📲"; margin-right: 2px; }
             #installAppBtn i { display: none; }
+        }
+
+        /* Adhan Toggle Button */
+        #adhanToggleBtn {
+            background: transparent;
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            padding: clamp(0.3rem, 0.6vw, 0.6rem) clamp(0.6rem, 1.2vw, 1.2rem);
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: clamp(0.65rem, 0.85vw, 0.85rem);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        #adhanToggleBtn:hover { transform: scale(1.02); }
+        @media (max-width: 768px) {
+            #adhanToggleBtn { font-size: 0.6rem; padding: 0.2rem 0.5rem; }
+            #adhanToggleBtn span { display: none; }
+            #adhanToggleBtn::before { content: "🕌"; margin-right: 2px; }
         }
     </style>
 </head>
@@ -89,7 +110,6 @@
             <div class="navbar-quran-icon"><i class="fas fa-book-open"></i></div>
             <div class="logo-text">
                 <h1>Mubarak Smart Islamic Academy</h1>
-                
                 <center><p>الأكاديمية الإسلامية للتميز القرآني</p></center>
                 <center><p>Online Islamic Learning</p></center>
             </div>
@@ -106,11 +126,15 @@
                 <i class="fas fa-bell"></i>
                 <span id="notificationBadge" style="position:absolute; top:-8px; right:-8px; background:red; color:white; border-radius:50%; padding:2px 6px; font-size:0.6rem; display:none;">0</span>
             </button>
-            <!-- 🔴 LIVE JOIN BUTTON (appears when live is active) -->
+            <!-- Adhan Toggle Button -->
+            <button id="adhanToggleBtn" onclick="toggleAdhanNotifications()">
+                🔔 Adhan
+            </button>
+            <!-- 🔴 LIVE JOIN BUTTON -->
             <button class="nav-btn live-join-nav-btn" id="liveJoinNavBtn" onclick="window.joinLiveClass()" style="display:none;">
                 <i class="fas fa-video"></i> 🔴 JOIN LIVE
             </button>
-            <!-- 📲 INSTALL APP BUTTON (appears when PWA install is supported) -->
+            <!-- 📲 INSTALL APP BUTTON -->
             <button id="installAppBtn" onclick="installApp()">
                 <i class="fas fa-download"></i> <span>Install App</span>
             </button>
@@ -170,7 +194,7 @@
     <!-- ===== APP CONTAINER ===== -->
     <div id="appContainer" class="container"></div>
 
-    <!-- ===== WHATSAPP FLOAT (now opens a modal) ===== -->
+    <!-- ===== WHATSAPP FLOAT ===== -->
     <a href="#" id="whatsappFloatBtn" class="whatsapp-float" target="_blank">
         <i class="fab fa-whatsapp"></i>
     </a>
@@ -209,39 +233,13 @@
         </div>
     </div>
 
-    <!-- ===== LIVE CLASS PANEL (slides up from bottom) ===== -->
-    <div id="livePanel">
-        <div class="live-panel-header">
-            <span class="live-panel-title" id="livePanelTitle">📹 Live Class</span>
-            <div class="live-panel-actions">
-                <button id="minimizeLiveBtn" onclick="minimizeLiveClass()" title="Minimize">
-                    <i class="fas fa-window-minimize"></i>
-                </button>
-                <button id="closeLiveBtn" class="leave-btn" onclick="leaveLiveClass()">✕ Leave</button>
-                <button id="endClassBtn" class="end-btn" onclick="endLiveClass()" style="display:none;">⏹ End</button>
-            </div>
-        </div>
-        <div class="live-panel-body">
-            <div id="jitsiIframeContainer"></div>
-            <div class="live-controls">
-                <button id="toggleMicBtn" onclick="toggleMic()"><i class="fas fa-microphone"></i> Mute</button>
-                <button id="toggleCamBtn" onclick="toggleCam()"><i class="fas fa-video"></i> Camera</button>
-                <button id="shareScreenBtn" onclick="shareScreen()"><i class="fas fa-desktop"></i> Share</button>
-            </div>
-        </div>
-        <div id="jitsiConnectionStatus" style="display:none; padding:1rem; text-align:center;">
-            <i class="fas fa-exclamation-triangle" style="color:var(--gold); font-size:1.5rem;"></i>
-            <p id="connectionMessage" style="color:#fff;">Reconnecting...</p>
-            <button onclick="retryJitsiConnection()" style="background:var(--gold); color:#0a1620; padding:8px 20px; border-radius:30px; border:none; font-weight:600; cursor:pointer;">Retry</button>
-        </div>
-    </div>
-
-    <!-- ===== MINI PLAYER (floating, draggable) ===== -->
-    <div id="miniPlayer" style="display:none;" onclick="restoreLiveClass()">
-        <div id="miniPlayerIframeContainer"></div>
-        <div class="mini-player-overlay">
-            <button id="miniLeaveBtn" onclick="event.stopPropagation(); leaveLiveClass();">✕</button>
-            <span class="mini-live-label">🔴 LIVE</span>
+    <!-- ===== JITSI OVERLAY ===== -->
+    <div id="jitsiOverlay">
+        <div id="jitsiIframeContainer"></div>
+        <div id="jitsiControls">
+            <span class="jitsi-room-label" id="jitsiRoomLabel">📹 Live Class</span>
+            <button class="leave-btn" onclick="window.leaveLiveClass()">✕ Leave Class</button>
+            <button id="jitsiEndClassBtn" class="end-btn" onclick="window.stopLiveClass()" style="display:none;">⏹ End Class</button>
         </div>
     </div>
 
